@@ -33,7 +33,7 @@ export const processProduct = async (product, options = {}) => {
     // Stage 1: Scraping (skip if we already have product data)
     if (!existingData.productData) {
       onProgress({ stage: 'scraping', progress: 10 });
-      const scrapedData = await scrapeProduct(product.url);
+      const scrapedData = await scrapeProduct(product.url, result.id);
       result.stages.scraping = {
         status: 'complete',
         data: scrapedData
@@ -71,7 +71,8 @@ export const processProduct = async (product, options = {}) => {
         (progress) => onProgress({ 
           stage: 'backgroundRemoval', 
           progress: 45 + (progress.percent * 0.2) // 45-65%
-        })
+        }),
+        result.id
       );
       result.stages.backgroundRemoval = {
         status: 'complete',
@@ -94,7 +95,8 @@ export const processProduct = async (product, options = {}) => {
         (progress) => onProgress({ 
           stage: 'modelGeneration', 
           progress: 70 + (progress.progress * 0.15) // 70-85%
-        })
+        }),
+        result.id
       );
       result.stages.modelGeneration = {
         status: 'complete',
@@ -107,7 +109,7 @@ export const processProduct = async (product, options = {}) => {
     // Stage 5: Optimization
     if (!existingData.optimizedModel) {
       onProgress({ stage: 'optimization', progress: 90 });
-      const optimized = await optimizeModel(result.stages.modelGeneration.data);
+      const optimized = await optimizeModel(result.stages.modelGeneration.data, result.id);
       result.stages.optimization = {
         status: 'complete',
         data: optimized
