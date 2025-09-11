@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { mockProducts } from '../../data/mockProducts';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
 const ProductGrid = ({ products, onNext, onBack }) => {
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  
   // Use mock products for now
   const displayProducts = mockProducts;
+  
+  // Initialize with all products selected by default
+  const [selectedProducts, setSelectedProducts] = useState(
+    displayProducts.map(p => p.id)
+  );
 
   const toggleProduct = (productId) => {
     setSelectedProducts(prev => {
@@ -41,17 +44,12 @@ const ProductGrid = ({ products, onNext, onBack }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Select Products to Process</h2>
             <p className="mt-1 text-gray-600">
-              Found {displayProducts.length} products. Select which ones to generate 3D models for.
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">
-              {selectedProducts.length} of {displayProducts.length} selected
+              {selectedProducts.length} of {displayProducts.length} products selected
             </p>
             <div className="mt-2 space-x-2">
               <button
                 onClick={selectAll}
-                className="text-sm text-purple-600 hover:text-purple-500"
+                className="text-sm text-primary-600 hover:text-primary-500"
               >
                 Select All
               </button>
@@ -59,59 +57,105 @@ const ProductGrid = ({ products, onNext, onBack }) => {
                 onClick={clearSelection}
                 className="text-sm text-gray-600 hover:text-gray-500"
               >
-                Clear
+                Clear Selection
               </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          {displayProducts.map(product => {
-            const isSelected = selectedProducts.includes(product.id);
-            return (
-              <div
-                key={product.id}
-                onClick={() => toggleProduct(product.id)}
-                className={`
-                  relative cursor-pointer rounded-lg border-2 transition-all
-                  ${isSelected ? 'border-purple-500 shadow-lg' : 'border-gray-200 hover:border-gray-300'}
-                `}
-              >
-                <div className="aspect-w-1 aspect-h-1">
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
-                </div>
-                
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{product.description}</p>
-                  <div className="mt-2 flex justify-between items-center">
-                    <span className="text-lg font-semibold text-gray-900">${product.price}</span>
-                    <span className={`
-                      px-2 py-1 rounded-full text-xs font-medium
-                      ${product.in_stock 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                      }
-                    `}>
-                      {product.in_stock ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                  </div>
-                </div>
+        {/* Product List - Vertical Layout */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="max-h-96 overflow-y-auto">
+            {displayProducts.map((product, index) => {
+              const isSelected = selectedProducts.includes(product.id);
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => toggleProduct(product.id)}
+                  className={`
+                    cursor-pointer border-b border-gray-100 last:border-b-0 transition-all
+                    ${isSelected 
+                      ? 'bg-primary-50 hover:bg-primary-100' 
+                      : 'bg-white hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <div className="flex items-center p-4">
+                    {/* Checkbox */}
+                    <div className="flex-shrink-0 mr-4">
+                      <div className={`
+                        w-5 h-5 rounded border-2 flex items-center justify-center transition-all
+                        ${isSelected 
+                          ? 'bg-primary-600 border-primary-600' 
+                          : 'bg-white border-gray-300'
+                        }
+                      `}>
+                        {isSelected && (
+                          <CheckIcon className="h-3 w-3 text-white" />
+                        )}
+                      </div>
+                    </div>
 
-                {isSelected && (
-                  <div className="absolute top-2 right-2 bg-purple-500 rounded-full p-2">
-                    <CheckIcon className="h-5 w-5 text-white" />
+                    {/* Product Image */}
+                    <div className="flex-shrink-0 w-16 h-16 mr-4">
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-900 truncate">
+                            {product.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {product.brand} • ${product.price}
+                          </p>
+                        </div>
+                        <div className="ml-4 flex-shrink-0">
+                          {product.in_stock ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              In Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                              Out of Stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {product.dimensions && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {product.dimensions.width}" × {product.dimensions.height}" × {product.dimensions.depth}"
+                        </p>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Summary Stats */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="flex justify-between items-center text-sm">
+            <div>
+              <span className="font-medium text-gray-900">Estimated Processing Time:</span>
+              <span className="ml-2 text-gray-600">~{selectedProducts.length * 30} seconds</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-900">Estimated Cost:</span>
+              <span className="ml-2 text-gray-600">${(selectedProducts.length * 0.50).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
         <div className="flex justify-between">
           <button
             onClick={onBack}
@@ -122,9 +166,9 @@ const ProductGrid = ({ products, onNext, onBack }) => {
           <button
             onClick={handleProcess}
             disabled={selectedProducts.length === 0}
-            className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary px-8 py-3 text-base flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Process {selectedProducts.length} Product{selectedProducts.length !== 1 ? 's' : ''}
+            <span>Process {selectedProducts.length} Product{selectedProducts.length !== 1 ? 's' : ''}</span>
           </button>
         </div>
       </div>

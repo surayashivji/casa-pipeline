@@ -1,31 +1,44 @@
 import { useState, useEffect } from 'react';
-import { generateProcessedImage } from '../../../data/mockProcessingStates';
+import { removeBackgrounds } from '../../../shared/utils/stageProcessors';
 
 const BackgroundRemoval = ({ data, onNext, onBack }) => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [processedImages, setProcessedImages] = useState([]);
-  const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
+  const [currentProgress, setCurrentProgress] = useState(0);
 
   useEffect(() => {
-    // Simulate processing each image
     const processImages = async () => {
-      const processed = [];
-      
-      for (let i = 0; i < data.selectedImages.length; i++) {
-        setCurrentProcessingIndex(i);
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing time
-        processed.push(generateProcessedImage(data.selectedImages[i]));
+      try {
+        const results = await removeBackgrounds(
+          data.selectedImages,
+          (progress) => {
+            setCurrentProgress(progress.percent);
+          }
+        );
+        
+        setProcessedImages(results);
+        setIsProcessing(false);
+      } catch (error) {
+        console.error('Background removal failed:', error);
+        setIsProcessing(false);
       }
-      
-      setProcessedImages(processed);
-      setIsProcessing(false);
     };
 
     processImages();
   }, [data.selectedImages]);
 
   const handleContinue = () => {
-    onNext({ processedImages });
+    onNext({ 
+      processedImages,
+      backgroundRemoval: {
+        status: 'complete',
+        data: {
+          processedImages,
+          processedImage: processedImages[0]?.processed,
+          maskImage: processedImages[0]?.mask
+        }
+      }
+    });
   };
 
   return (
@@ -39,96 +52,90 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
 
       {isProcessing ? (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-6">
-            <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              <div>
-                <p className="text-blue-900 font-medium">
-                  Processing image {currentProcessingIndex + 1} of {data.selectedImages.length}
-                </p>
-                <p className="text-blue-700 text-sm mt-1">
-                  Removing background and creating transparency...
-                </p>
-              </div>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600 mb-2">Processing images...</p>
+              <p className="text-sm text-gray-500">
+                This may take a few moments
+              </p>
             </div>
           </div>
-
+          
+          {/* Progress Bar */}
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${((currentProcessingIndex + 1) / data.selectedImages.length) * 100}%` }}
+              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${currentProgress}%` }}
             />
           </div>
+          <p className="text-center text-sm text-gray-600">
+            {Math.round(currentProgress)}% complete
+          </p>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            {processedImages.map((image, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
+            {processedImages.map((result, index) => (
+              <div key={index} className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Image {index + 1}
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Original</p>
-                    <img
-                      src={image.original}
+                    <p className="text-xs text-gray-500 mb-1">Original</p>
+                    <img 
+                      src={result.original}
                       alt={`Original ${index + 1}`}
-                      className="w-full h-64 object-cover rounded-md border border-gray-200"
+                      className="w-full h-32 object-cover rounded border border-gray-200"
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Background Removed</p>
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-checkered rounded-md"></div>
-                      <img
-                        src={image.original}
+                    <p className="text-xs text-gray-500 mb-1">Background Removed</p>
+                    <div className="w-full h-32 bg-checkered rounded border border-gray-200 flex items-center justify-center">
+                      <img 
+                        src={result.processed}
                         alt={`Processed ${index + 1}`}
-                        className="relative w-full h-64 object-cover rounded-md"
-                        style={{ opacity: 0.9 }}
+                        className="max-w-full max-h-full object-contain"
                       />
                     </div>
                   </div>
-                </div>
-                <div className="mt-3 flex justify-between text-sm text-gray-600">
-                  <span>Processing time: {image.processingTime}s</span>
-                  <span>File size: {image.fileSize}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <p className="text-green-800">
-              ✓ All images processed successfully. Backgrounds removed with high quality.
-            </p>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <svg className="h-5 w-5 text-green-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-medium text-green-900">Background removal complete!</p>
+                <p className="text-sm text-green-700 mt-1">
+                  {processedImages.length} image{processedImages.length !== 1 ? 's' : ''} processed successfully
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between">
+            <button
+              onClick={onBack}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleContinue}
+              className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            >
+              Continue to Approval
+            </button>
           </div>
         </div>
       )}
-
-      <div className="flex justify-between">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleContinue}
-          disabled={isProcessing}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isProcessing ? 'Processing...' : 'Continue to Approval'}
-        </button>
-      </div>
-
-      <style jsx>{`
-        .bg-checkered {
-          background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
-            linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
-            linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
-          background-size: 20px 20px;
-          background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-      `}</style>
     </div>
   );
 };

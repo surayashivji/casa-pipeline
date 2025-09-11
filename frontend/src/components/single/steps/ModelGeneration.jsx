@@ -1,151 +1,213 @@
 import { useState, useEffect } from 'react';
-import { generateMock3DModel } from '../../../data/mockProcessingStates';
+import { generate3DModel } from '../../../shared/utils/stageProcessors';
 import { CheckIcon, CubeIcon } from '@heroicons/react/24/solid';
 
 const ModelGeneration = ({ data, onNext, onBack }) => {
   const [isGenerating, setIsGenerating] = useState(true);
+  const [currentStep, setCurrentStep] = useState('');
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('Initializing Meshy API...');
   const [model3D, setModel3D] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate 3D generation process
-    const steps = [
-      { progress: 10, status: 'Uploading images to Meshy...', delay: 1000 },
-      { progress: 30, status: 'Analyzing product structure...', delay: 2000 },
-      { progress: 50, status: 'Generating 3D geometry...', delay: 3000 },
-      { progress: 70, status: 'Creating textures and materials...', delay: 2000 },
-      { progress: 90, status: 'Optimizing model...', delay: 1500 },
-      { progress: 100, status: 'Generation complete!', delay: 500 }
-    ];
-
-    let currentStep = 0;
-    
-    const runStep = () => {
-      if (currentStep < steps.length) {
-        const step = steps[currentStep];
-        setProgress(step.progress);
-        setStatus(step.status);
+    const generateModel = async () => {
+      try {
+        const result = await generate3DModel(
+          data.processedImages,
+          data.product,
+          (progressData) => {
+            setCurrentStep(progressData.step);
+            setProgress(progressData.progress);
+          }
+        );
         
-        setTimeout(() => {
-          currentStep++;
-          runStep();
-        }, step.delay);
-      } else {
-        setModel3D(generateMock3DModel(data.product.id));
+        setModel3D(result);
+        setIsGenerating(false);
+      } catch (err) {
+        setError(err.message);
         setIsGenerating(false);
       }
     };
 
-    runStep();
-  }, [data.product.id]);
+    generateModel();
+  }, [data]);
 
   const handleContinue = () => {
-    onNext({ model3D });
+    onNext({ 
+      model3D,
+      modelGeneration: {
+        status: 'complete',
+        data: model3D
+      }
+    });
   };
+
+  const handleRetry = () => {
+    setIsGenerating(true);
+    setError(null);
+    setProgress(0);
+    
+    // Re-trigger the effect
+    const generateModel = async () => {
+      try {
+        const result = await generate3DModel(
+          data.processedImages,
+          data.product,
+          (progressData) => {
+            setCurrentStep(progressData.step);
+            setProgress(progressData.progress);
+          }
+        );
+        
+        setModel3D(result);
+        setIsGenerating(false);
+      } catch (err) {
+        setError(err.message);
+        setIsGenerating(false);
+      }
+    };
+    
+    generateModel();
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">3D Model Generation</h2>
+          <p className="mt-2 text-gray-600">
+            Generate a 3D model from processed images
+          </p>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-start space-x-3">
+            <svg className="h-6 w-6 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="font-medium text-red-900">Generation Failed</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between">
+          <button
+            onClick={onBack}
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleRetry}
+            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Retry Generation
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">3D Model Generation</h2>
         <p className="mt-2 text-gray-600">
-          Using Meshy AI to create a 3D model from your approved images
+          Creating a 3D model using Meshy AI
         </p>
       </div>
 
       {isGenerating ? (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-8">
-            <div className="flex flex-col items-center space-y-4">
+          <div className="bg-primary-50 rounded-lg p-8">
+            <div className="flex flex-col items-center">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full border-4 border-indigo-200 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
-                  <span className="text-2xl font-bold text-indigo-600">{progress}%</span>
+                <CubeIcon className="h-16 w-16 text-primary-600 animate-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin h-20 w-20 border-4 border-primary-600 border-t-transparent rounded-full"></div>
                 </div>
               </div>
-              
-              <p className="text-lg font-medium text-gray-700">{status}</p>
-              
-              <div className="w-full max-w-md">
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
+              <p className="mt-4 text-lg font-medium text-gray-900">{currentStep}</p>
+              <p className="mt-1 text-sm text-gray-600">Please wait while we generate your 3D model</p>
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Tip:</strong> Meshy AI typically takes 30-60 seconds to generate a high-quality 3D model.
-              The more images provided, the better the result.
-            </p>
+          {/* Progress Bar */}
+          <div>
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Progress</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div 
+                className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <div className="flex items-start space-x-3">
-              <CheckIcon className="h-6 w-6 text-green-600 mt-1" />
-              <div>
-                <h3 className="text-lg font-medium text-green-900">3D Model Generated Successfully!</h3>
-                <p className="mt-1 text-green-700">
-                  Your model is ready for review and optimization.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-gray-50 rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Generation Details</h3>
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Task ID</dt>
-                <dd className="mt-1 text-sm text-gray-900">{model3D?.meshyTaskId}</dd>
+            <div className="flex items-start space-x-4">
+              <img 
+                src={model3D.modelPreview}
+                alt="3D Model Preview"
+                className="w-48 h-48 object-cover rounded-lg border border-gray-200"
+              />
+              <div className="flex-1 space-y-3">
+                <h3 className="text-lg font-medium text-gray-900">Model Generated Successfully!</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Model ID:</span>
+                    <span className="font-mono text-gray-900">{model3D.meshyJobId}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Vertices:</span>
+                    <span className="text-gray-900">{model3D.vertices.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Triangles:</span>
+                    <span className="text-gray-900">{model3D.triangles.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">File Size:</span>
+                    <span className="text-gray-900">{model3D.fileSize}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Format:</span>
+                    <span className="text-gray-900">{model3D.format.toUpperCase()}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Generation Time</dt>
-                <dd className="mt-1 text-sm text-gray-900">{model3D?.generationTime} seconds</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Polygon Count</dt>
-                <dd className="mt-1 text-sm text-gray-900">~15,000 (original)</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">API Cost</dt>
-                <dd className="mt-1 text-sm text-gray-900">${model3D?.cost.toFixed(2)}</dd>
-              </div>
-            </dl>
+            </div>
           </div>
 
-          <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-center h-64">
-            <div className="text-center">
-              <CubeIcon className="h-16 w-16 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">3D Model Preview</p>
-              <p className="text-sm text-gray-500 mt-1">Model viewer will be shown in next step</p>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <CheckIcon className="h-5 w-5 text-green-600" />
+              <p className="text-green-900 font-medium">3D model generated successfully!</p>
             </div>
+          </div>
+
+          <div className="flex justify-between">
+            <button
+              onClick={onBack}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleContinue}
+              className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            >
+              Continue to Model Viewer
+            </button>
           </div>
         </div>
       )}
-
-      <div className="flex justify-between">
-        <button
-          onClick={onBack}
-          disabled={isGenerating}
-          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Back
-        </button>
-        <button
-          onClick={handleContinue}
-          disabled={isGenerating}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGenerating ? 'Generating Model...' : 'View 3D Model'}
-        </button>
-      </div>
     </div>
   );
 };

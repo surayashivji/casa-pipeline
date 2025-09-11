@@ -15,19 +15,19 @@ const Layout = ({ children }) => {
                 <CubeIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 tracking-tight">Room Decorator Pipeline</h1>
+                <h1 className="text-xl font-bold text-gray-900 tracking-tight">Casa Pipeline</h1>
                 <p className="text-sm text-gray-500">3D Model Generation System</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-full">
+              {/* <div className="px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-full">
                 Phase 1 - GUI Development
-              </div>
-              <div className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-full flex items-center space-x-2">
+              </div> */}
+              {/* <div className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-full flex items-center space-x-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 <span>Mock Data Mode</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -43,7 +43,7 @@ const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              © 2024 Room Decorator Pipeline. Built with React + FastAPI.
+              © Casa
             </div>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center space-x-2">

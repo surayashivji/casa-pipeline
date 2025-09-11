@@ -1,129 +1,134 @@
-import { useState, useRef, useEffect } from 'react';
-import * as THREE from 'three';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Box } from '@react-three/drei';
-
-// 3D Model Component
-function FurnitureModel() {
-  const meshRef = useRef();
-  
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.2;
-    }
-  });
-
-  return (
-    <Box ref={meshRef} args={[2, 2, 2]}>
-      <meshStandardMaterial color="#8b7355" />
-    </Box>
-  );
-}
+import { useState, useEffect } from 'react';
+import { optimizeModel } from '../../../shared/utils/stageProcessors';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 const ModelViewer = ({ data, onNext, onBack }) => {
+  const [isOptimizing, setIsOptimizing] = useState(true);
+  const [optimizedModel, setOptimizedModel] = useState(null);
   const [selectedLOD, setSelectedLOD] = useState('medium');
-  const model = data.model3D;
 
-  const lodOptions = [
-    { level: 'high', polygons: 30000, size: '15MB', device: 'iPad Pro, iPhone 14 Pro' },
-    { level: 'medium', polygons: 10000, size: '5MB', device: 'iPhone 12, iPhone 13' },
-    { level: 'low', polygons: 3000, size: '1.5MB', device: 'iPhone SE, older devices' }
-  ];
+  useEffect(() => {
+    const optimize = async () => {
+      try {
+        const result = await optimizeModel(data.model3D);
+        setOptimizedModel(result);
+        setIsOptimizing(false);
+      } catch (error) {
+        console.error('Optimization failed:', error);
+        setIsOptimizing(false);
+      }
+    };
+
+    optimize();
+  }, [data.model3D]);
 
   const handleContinue = () => {
-    onNext({ selectedLOD });
+    onNext({ 
+      optimizedModel,
+      optimization: {
+        status: 'complete',
+        data: optimizedModel
+      }
+    });
   };
+
+  if (isOptimizing) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">3D Model Viewer</h2>
+          <p className="mt-2 text-gray-600">
+            Optimizing and preparing your model for viewing
+          </p>
+        </div>
+
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Optimizing model...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentLOD = optimizedModel?.lods?.find(lod => lod.level === selectedLOD) || optimizedModel?.lods?.[0];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Review 3D Model</h2>
+        <h2 className="text-2xl font-bold text-gray-900">3D Model Viewer</h2>
         <p className="mt-2 text-gray-600">
-          Inspect the generated model and select the appropriate quality level for your target devices
+          Review and download your generated 3D model
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
-          <div className="bg-gray-900 rounded-lg overflow-hidden" style={{ height: '500px' }}>
-            <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
-              <ambientLight intensity={0.5} />
-              <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-              <pointLight position={[-10, -10, -10]} />
-              <FurnitureModel />
-              <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
-              <gridHelper args={[10, 10]} />
-            </Canvas>
-          </div>
-          
-          <div className="mt-4 flex justify-center space-x-4">
-            <button className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm">
-              Reset Camera
-            </button>
-            <button className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm">
-              Toggle Wireframe
-            </button>
-            <button className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm">
-              Toggle Texture
-            </button>
+      <div className="bg-gray-100 rounded-lg p-8">
+        <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-center">
+            <img 
+              src={data.model3D.modelPreview}
+              alt="3D Model"
+              className="max-w-full max-h-full object-contain"
+            />
+            <div className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded">
+              3D Preview
+            </div>
           </div>
         </div>
+      </div>
 
+      {optimizedModel && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">LOD Selection</h3>
-            <div className="space-y-2">
-              {lodOptions.map((lod) => (
-                <div
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Model Quality Options</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {optimizedModel.lods.map((lod) => (
+                <button
                   key={lod.level}
                   onClick={() => setSelectedLOD(lod.level)}
-                  className={`
-                    p-3 rounded-lg border-2 cursor-pointer transition-all
-                    ${selectedLOD === lod.level 
-                      ? 'border-indigo-500 bg-indigo-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                    }
-                  `}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedLOD === lod.level
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium capitalize">{lod.level} Quality</p>
-                      <p className="text-sm text-gray-600">{lod.polygons.toLocaleString()} polygons</p>
-                      <p className="text-xs text-gray-500 mt-1">{lod.device}</p>
-                    </div>
-                    <span className="text-sm text-gray-500">{lod.size}</span>
-                  </div>
-                </div>
+                  <p className="font-medium text-gray-900 capitalize">{lod.level} Quality</p>
+                  <p className="text-sm text-gray-600 mt-1">{lod.polygonCount.toLocaleString()} polygons</p>
+                  <p className="text-xs text-gray-500">{lod.fileSize}</p>
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <p className="text-sm text-blue-800">
-              <strong>Recommendation:</strong> Use Medium quality for most iOS devices. 
-              It provides a good balance between visual quality and performance.
-            </p>
-          </div>
+          {currentLOD && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-blue-900">Selected: {currentLOD.level} quality</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    {currentLOD.polygonCount.toLocaleString()} polygons • {currentLOD.fileSize}
+                  </p>
+                </div>
+                <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  <ArrowDownTrayIcon className="h-5 w-5" />
+                  <span>Download</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Model Stats</h4>
-            <dl className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Format:</dt>
-                <dd className="text-gray-900">GLB / USDZ</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Textures:</dt>
-                <dd className="text-gray-900">2K PBR</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Materials:</dt>
-                <dd className="text-gray-900">3</dd>
-              </div>
-            </dl>
+            <h4 className="font-medium text-gray-900 mb-2">Optimization Results:</h4>
+            <p className="text-sm text-gray-600">
+              Compression ratio: {optimizedModel.compressionRatio}
+            </p>
+            <p className="text-sm text-gray-600">
+              3 LOD levels generated for optimal performance on iOS devices
+            </p>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="flex justify-between">
         <button
@@ -134,9 +139,9 @@ const ModelViewer = ({ data, onNext, onBack }) => {
         </button>
         <button
           onClick={handleContinue}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
-          Save Model ({selectedLOD} quality)
+          Save & Continue
         </button>
       </div>
     </div>

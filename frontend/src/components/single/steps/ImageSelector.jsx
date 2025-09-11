@@ -35,7 +35,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Select Images for Processing</h2>
         <p className="mt-2 text-gray-600">
-          Choose which product images to use for 3D model generation (maximum 4 recommended)
+          Choose which product images to use for background removal (maximum 4 recommended)
         </p>
       </div>
 

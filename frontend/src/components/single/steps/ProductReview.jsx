@@ -18,7 +18,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Review Product Data</h2>
         <p className="mt-2 text-gray-600">
-          Verify the scraped product information before proceeding with 3D model generation
+          Verify the scraped product information before proceeding with image selection
         </p>
       </div>
 
@@ -131,7 +131,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
         
         {isApproved && (
           <p className="text-sm text-green-600">
-            ✓ Ready to proceed with 3D model generation
+            ✓ Ready to proceed with background removal
           </p>
         )}
       </div>

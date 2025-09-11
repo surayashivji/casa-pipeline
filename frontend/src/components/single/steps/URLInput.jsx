@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
+import { scrapeProduct } from '../../../shared/utils/stageProcessors';
 
 const URLInput = ({ onNext }) => {
   const [url, setUrl] = useState('');
@@ -38,38 +39,22 @@ const URLInput = ({ onNext }) => {
     setIsValidating(true);
     setError('');
 
-    // Simulate URL validation and product detection
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Mock product data based on URL
-    const mockProduct = {
-      id: 'prod_' + Math.random().toString(36).substr(2, 9),
-      url: url,
-      name: 'Sample Product',
-      description: 'This is a sample product for demonstration',
-      brand: 'IKEA',
-      price: 99.99,
-      images: [
-        'https://via.placeholder.com/400x300/8b7355/ffffff?text=Product+View+1',
-        'https://via.placeholder.com/400x300/8b7355/ffffff?text=Product+View+2',
-        'https://via.placeholder.com/400x300/8b7355/ffffff?text=Product+View+3'
-      ],
-      dimensions: {
-        width: 20,
-        height: 30,
-        depth: 20,
-        unit: 'inches'
-      },
-      category: 'furniture',
-      room_type: 'living_room',
-      style_tags: ['modern', 'scandinavian'],
-      placement_type: 'floor',
-      assembly_required: true,
-      in_stock: true
-    };
-
-    setIsValidating(false);
-    onNext({ product: mockProduct, url });
+    try {
+      // Use shared scraping function
+      const product = await scrapeProduct(url);
+      
+      setIsValidating(false);
+      onNext({ 
+        product,
+        scraping: {
+          status: 'complete',
+          data: product
+        }
+      });
+    } catch (err) {
+      setError('Failed to scrape product. Please try again.');
+      setIsValidating(false);
+    }
   };
 
   return (

@@ -80,7 +80,7 @@ const ModeSelector = ({ mode, onModeChange }) => {
                     {modeOption.description}
                   </p>
                   
-                  <ul className="mt-3 space-y-1">
+                  {/* <ul className="mt-3 space-y-1">
                     {modeOption.features.slice(0, 2).map((feature, featureIndex) => (
                       <li 
                         key={featureIndex} 
@@ -94,7 +94,7 @@ const ModeSelector = ({ mode, onModeChange }) => {
                         {feature}
                       </li>
                     ))}
-                  </ul>
+                  </ul> */}
                 </div>
               </div>
 

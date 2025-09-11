@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import CategoryInput from './CategoryInput';
 import ProductGrid from './ProductGrid';
-import ProcessingQueue from './ProcessingQueue';
-import ResultsDashboard from './ResultsDashboard';
+import BatchProcessingDashboard from './BatchProcessingDashboard';
 
 const BatchPipeline = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -11,8 +10,7 @@ const BatchPipeline = () => {
   const steps = [
     { name: 'Category Input', component: CategoryInput },
     { name: 'Product Selection', component: ProductGrid },
-    { name: 'Processing Queue', component: ProcessingQueue },
-    { name: 'Results Dashboard', component: ResultsDashboard }
+    { name: 'Processing & Results', component: BatchProcessingDashboard }
   ];
 
   const handleNext = (data) => {
@@ -69,21 +67,11 @@ const BatchPipeline = () => {
           data={pipelineData}
           onNext={handleNext}
           onBack={currentStep > 0 ? handleBack : undefined}
-          onComplete={currentStep === 2 ? () => handleNext({}) : undefined}
           onNewBatch={handleNewBatch}
           products={pipelineData.selectedProducts || []}
-          batchJob={pipelineData.batchJob}
         />
       </div>
 
-      {/* Step Navigation Info */}
-      {currentStep > 0 && currentStep < 3 && (
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-500">
-            Use the Back button to return to the previous step
-          </p>
-        </div>
-      )}
     </div>
   );
 };

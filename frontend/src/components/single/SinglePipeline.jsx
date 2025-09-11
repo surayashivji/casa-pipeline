@@ -100,14 +100,6 @@ const SinglePipeline = () => {
         />
       </div>
 
-      {/* Step Navigation Info */}
-      {currentStep > 0 && (
-        <div className="mt-6 text-center animate-fade-in">
-          <p className="text-sm text-gray-500">
-            Use the Back button to return to the previous step
-          </p>
-        </div>
-      )}
     </div>
   );
 };
