@@ -1,42 +1,266 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base typography improvements */
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-variant-numeric: tabular-nums;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  
+  h1 {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+    font-weight: 700;
+  }
+  
+  h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 600;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+  }
+  
+  /* Better focus styles */
+  *:focus {
+    @apply outline-none;
+  }
+  
+  *:focus-visible {
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Component layer customizations */
+@layer components {
+  /* Enhanced button styles */
+  .btn {
+    @apply px-4 py-2 font-medium rounded-lg transition-all duration-200 transform active:scale-[0.98];
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 shadow-soft hover:shadow-medium;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 shadow-sm hover:shadow-soft;
+  }
+  
+  /* Enhanced input styles */
+  .input {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 
+           transition-all duration-200 bg-white
+           hover:border-gray-400 
+           focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-white rounded-xl shadow-soft border border-gray-100 overflow-hidden 
+           transition-all duration-200 hover:shadow-medium;
+  }
+  
+  /* Step indicator styles */
+  .step-indicator {
+    @apply relative flex items-center justify-center w-10 h-10 rounded-full 
+           transition-all duration-300 font-semibold;
+  }
+  
+  .step-indicator.active {
+    @apply bg-primary-600 text-white shadow-lg shadow-primary-600/30;
+  }
+  
+  .step-indicator.completed {
+    @apply bg-green-600 text-white;
+  }
+  
+  .step-indicator.inactive {
+    @apply bg-gray-200 text-gray-500;
+  }
 }
 
-@keyframes logo-spin {
+/* Custom animations */
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
 }
 
+/* Checkered background for transparent images */
+.bg-checkered {
+  background-image: 
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Aspect ratio utilities */
+.aspect-w-1 {
+  position: relative;
+  padding-bottom: 100%;
+}
+
+.aspect-w-16 {
+  position: relative;
+  padding-bottom: 56.25%;
+}
+
+.aspect-w-1 > *,
+.aspect-w-16 > * {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors;
+}
+
+.btn-danger {
+  @apply px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+}
+
+.btn-success {
+  @apply px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+}
+
+/* Card styles */
 .card {
-  padding: 2em;
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
 }
 
-.read-the-docs {
-  color: #888;
+.card-header {
+  @apply border-b border-gray-200 pb-4 mb-4;
+}
+
+/* Form styles */
+.form-input {
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+/* Status indicators */
+.status-success {
+  @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-error {
+  @apply bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-warning {
+  @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-info {
+  @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+/* Loading states */
+.loading-skeleton {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* 3D Model Viewer Styles */
+.model-viewer-container {
+  @apply bg-gray-900 rounded-lg overflow-hidden;
+  height: 500px;
+}
+
+.model-controls {
+  @apply mt-4 flex justify-center space-x-4;
+}
+
+.model-control-btn {
+  @apply px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm transition-colors;
+}
+
+/* Progress indicators */
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2;
+}
+
+.progress-fill {
+  @apply bg-indigo-600 h-2 rounded-full transition-all duration-300;
+}
+
+/* Grid layouts */
+.product-grid {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.image-grid {
+  @apply grid grid-cols-2 gap-4;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .product-grid {
+    @apply grid-cols-1;
+  }
+  
+  .image-grid {
+    @apply grid-cols-1;
+  }
 }
