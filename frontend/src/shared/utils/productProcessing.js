@@ -1,17 +1,17 @@
 // Shared product processing utilities used by both single and batch pipelines
 // Updated to use real API service instead of mock stageProcessors
-import { 
-  scrapeProduct,
-  selectImages,
-  removeBackgrounds,
-  generate3DModel,
-  optimizeModel,
-  saveProduct
-} from '../services/apiService';
+import { scrapeProduct } from '../services/apiService';
+
+/**
+ * Helper function to extract product ID consistently
+ */
+const extractProductId = (response) => {
+  return response?.product?.id || response?.id || null;
+};
 
 /**
  * Process a product through the pipeline stages
- * In Phase 1, this uses mock processors. In Phase 2, the stage processors will call real APIs
+ * Phase 2: Uses mock responses for development. Phase 3+: Will use real API calls
  */
 export const processProduct = async (product, options = {}) => {
   const { 
@@ -41,11 +41,11 @@ export const processProduct = async (product, options = {}) => {
       };
       // Update product info with scraped data and use the real product ID
       Object.assign(result, scrapedData);
-      result.id = scrapedData.product.id; // Use the real UUID from backend
+      result.id = extractProductId(scrapedData); // Use the real UUID from backend
     } else {
       result.stages.scraping = existingData.scraping;
       Object.assign(result, existingData.productData);
-      result.id = existingData.productData.product.id; // Use the real UUID
+      result.id = extractProductId(existingData.productData); // Use the real UUID
     }
 
     // Stage 2: Image Selection
@@ -126,6 +126,10 @@ export const processProduct = async (product, options = {}) => {
     onProgress({ stage: 'saving', progress: 95 });
     // Mock success for Phase 2 development - same as single pipeline
     console.log('Using mock save for Phase 2');
+    
+    // Add a small delay to simulate real saving
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     result.stages.saving = {
       status: 'complete',
       data: { id: result.id, status: 'saved' }
@@ -135,6 +139,9 @@ export const processProduct = async (product, options = {}) => {
     result.endTime = Date.now();
     result.processingTime = ((result.endTime - result.startTime) / 1000).toFixed(1) + 's';
     result.cost = 0.50; // Mock cost
+    
+    // Final progress update to ensure UI knows processing is complete
+    onProgress({ stage: 'saving', progress: 100 });
 
   } catch (error) {
     result.status = 'failed';

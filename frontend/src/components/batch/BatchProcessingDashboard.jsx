@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 import { ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { startBatchProcess, getBatchStatus } from '../../shared/services/apiService';
+// Note: startBatchProcess and getBatchStatus available for future batch API integration
 import { processBatch } from '../../shared/utils/productProcessing';
 import ProductPipelineView from '../../shared/components/ProductPipelineView';
 
@@ -71,9 +71,10 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                   if (stageIndex < currentStageIndex) {
                     currentProduct.stages[stageKey] = { status: 'completed', progress: 100 };
                   } else if (stageKey === progress.stage) {
+                    const progressValue = progress.progress || 0;
                     currentProduct.stages[stageKey] = { 
-                      status: 'processing', 
-                      progress: progress.progress || 0 
+                      status: progressValue >= 100 ? 'completed' : 'processing', 
+                      progress: progressValue 
                     };
                   }
                 });
@@ -86,10 +87,13 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
           }
         },
         onProductComplete: (result) => {
-          // Store the full result for expanded view
+          // Store the full result for expanded view using the original product ID
+          const originalProductId = products.find(p => p.name === result.name)?.id;
+          const resultId = originalProductId || result.id;
+          
           setProcessedResults(prev => ({
             ...prev,
-            [result.id]: result
+            [resultId]: result
           }));
           
           // Update status

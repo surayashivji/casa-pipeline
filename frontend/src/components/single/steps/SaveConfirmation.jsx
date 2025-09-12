@@ -102,7 +102,7 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
               ) : (
                 <>
                   <ServerIcon className="h-5 w-5" />
-                  <span>Product Results</span>
+                  <span>Save to Database</span>
                 </>
               )}
             </button>
