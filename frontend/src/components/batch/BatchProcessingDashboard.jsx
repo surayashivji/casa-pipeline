@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 import { ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { startBatchProcess, getBatchStatus } from '../../shared/services/apiService';
 import { processBatch } from '../../shared/utils/productProcessing';
 import ProductPipelineView from '../../shared/components/ProductPipelineView';
 

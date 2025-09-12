@@ -67,10 +67,10 @@ export const scrapeProduct = async (url, mode = 'single') => {
   return apiClient.post('/scrape', { url, mode });
 };
 
-export const selectImages = async (productId, selectedImages) => {
+export const selectImages = async (productId, imageUrls) => {
   return apiClient.post('/select-images', {
     product_id: productId,
-    selected_images: selectedImages,
+    image_urls: imageUrls,
   });
 };
 
@@ -81,18 +81,19 @@ export const removeBackgrounds = async (productId, imageUrls) => {
   });
 };
 
-export const approveImages = async (productId, approvedImages) => {
+export const approveImages = async (productId, imageUrls, approved = true) => {
   return apiClient.post('/approve-images', {
     product_id: productId,
-    approved_images: approvedImages,
+    image_urls: imageUrls,
+    approved: approved,
   });
 };
 
-export const generate3DModel = async (productId, approvedImages, quality = 'high') => {
+export const generate3DModel = async (productId, imageUrls, settings = {}) => {
   return apiClient.post('/generate-3d', {
     product_id: productId,
-    approved_images: approvedImages,
-    quality,
+    image_urls: imageUrls,
+    settings: settings,
   });
 };
 
@@ -100,27 +101,26 @@ export const checkModelStatus = async (taskId) => {
   return apiClient.get(`/model-status/${taskId}`);
 };
 
-export const optimizeModel = async (productId, modelUrl) => {
+export const optimizeModel = async (productId, imageUrls, settings = {}) => {
   return apiClient.post('/optimize-model', {
     product_id: productId,
-    model_url: modelUrl,
+    image_urls: imageUrls,
+    settings: settings,
   });
 };
 
-export const saveProduct = async (productId, finalModelUrl, metadata = {}) => {
-  return apiClient.post('/save-product', {
-    product_id: productId,
-    final_model_url: finalModelUrl,
-    metadata,
+export const saveProduct = async (productId, status = 'completed', metadata = {}) => {
+  return apiClient.post(`/save-product/${productId}`, {
+    status: status,
+    metadata: metadata,
   });
 };
 
 // Batch Processing
-export const scrapeCategory = async (categoryUrl, maxProducts = 10, filters = {}) => {
+export const scrapeCategory = async (categoryUrl, limit = 10) => {
   return apiClient.post('/scrape-category', {
-    category_url: categoryUrl,
-    max_products: maxProducts,
-    filters,
+    url: categoryUrl,
+    limit: limit,
   });
 };
 

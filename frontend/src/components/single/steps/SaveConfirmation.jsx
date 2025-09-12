@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { saveResults } from '../../../shared/utils/stageProcessors';
+import { saveProduct } from '../../../shared/services/apiService';
 import { ServerIcon } from '@heroicons/react/24/outline';
 import ProductPipelineView from '../../../shared/components/ProductPipelineView';
 
@@ -26,7 +26,16 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
         }
       };
       
-      const result = await saveResults(productData);
+      const result = await saveProduct(
+        data.product.id,
+        'completed',
+        {
+          final_model_url: data.optimizedModel?.optimizedModelUrl || data.model3D?.modelUrl,
+          total_processing_time: Date.now() - (data.startTime || Date.now()),
+          total_cost: (data.model3D?.cost || 0) + (data.optimizedModel?.cost || 0),
+          stages_completed: ['scraping', 'image_selection', 'background_removal', 'model_generation', 'optimization']
+        }
+      );
       
       setSaveData(result);
       setSaved(true);

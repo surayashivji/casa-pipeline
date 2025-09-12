@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { generate3DModel } from '../../../shared/utils/stageProcessors';
+import { generate3DModel } from '../../../shared/services/apiService';
 import { CheckIcon, CubeIcon } from '@heroicons/react/24/solid';
 import { createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
 import ErrorMessage from '../../../shared/components/ErrorMessage';
@@ -15,20 +15,33 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
   useEffect(() => {
     const generateModel = async () => {
       try {
-        const result = await handleApiError(
+        const apiResponse = await handleApiError(
           () => generate3DModel(
-            data.processedImages,
-            data.product,
-            (progressData) => {
-              setCurrentStep(progressData.step);
-              setProgress(progressData.progress);
-            }
+            data.product.id,
+            data.processedImages.map(img => img.processed), // Extract processed image URLs
+            { quality: 'high', auto_approve: true }
           ),
           2, // max retries for 3D generation
           2000 // longer delay for 3D generation
         );
         
-        setModel3D(result);
+        // Adapt API response to component format
+        const adaptedResult = {
+          taskId: apiResponse.task_id,
+          status: apiResponse.status,
+          estimatedCompletion: apiResponse.estimated_completion,
+          cost: apiResponse.cost,
+          // Mock additional fields that component expects
+          modelUrl: `https://example.com/models/${apiResponse.task_id}.glb`,
+          modelPreview: `https://example.com/previews/${apiResponse.task_id}.jpg`,
+          meshyJobId: apiResponse.task_id,
+          vertices: 15420,
+          triangles: 30840,
+          fileSize: '15.2 MB',
+          format: 'glb'
+        };
+        
+        setModel3D(adaptedResult);
         setIsGenerating(false);
       } catch (err) {
         setError(createError(

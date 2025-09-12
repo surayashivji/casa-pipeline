@@ -4,6 +4,7 @@ import { CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
 const ProductReview = ({ data, onNext, onBack }) => {
   const [isApproved, setIsApproved] = useState(false);
   const product = data.product;
+  const images = data.images || [];
 
   const handleContinue = () => {
     if (!isApproved) {
@@ -49,7 +50,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
             </div>
             <div className="ml-6">
               <img
-                src={product.images[0]}
+                src={images[0]}
                 alt={product.name}
                 className="w-32 h-32 object-cover rounded-lg border border-gray-200"
               />
@@ -90,9 +91,9 @@ const ProductReview = ({ data, onNext, onBack }) => {
       </div>
 
       <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-gray-900 mb-2">Available Images ({product.images.length})</h4>
+        <h4 className="text-sm font-medium text-gray-900 mb-2">Available Images ({images.length})</h4>
         <div className="grid grid-cols-4 gap-2">
-          {product.images.map((image, index) => (
+          {images.map((image, index) => (
             <img
               key={index}
               src={image}

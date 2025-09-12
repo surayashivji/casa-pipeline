@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
 const ImageSelector = ({ data, onNext, onBack }) => {
-  const [selectedImages, setSelectedImages] = useState(data.selectedImages || data.product.images || []);
+  const [selectedImages, setSelectedImages] = useState(data.selectedImages || data.images || []);
   const product = data.product;
+  const images = data.images || [];
 
   const toggleImage = (image) => {
     setSelectedImages(prev => {
@@ -15,7 +16,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
   };
 
   const selectAll = () => {
-    setSelectedImages(product.images);
+    setSelectedImages(images);
   };
 
   const deselectAll = () => {
@@ -41,7 +42,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
 
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          {selectedImages.length} of {product.images.length} images selected
+          {selectedImages.length} of {images.length} images selected
         </div>
         <div className="space-x-2">
           <button
@@ -60,7 +61,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {product.images.map((image, index) => {
+        {images.map((image, index) => {
           const isSelected = selectedImages.includes(image);
           return (
             <div

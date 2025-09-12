@@ -150,14 +150,14 @@ def test_single_product_pipeline():
         print_success(f"Product scraped: {scrape_data['product']['name']}")
         print(f"   Product ID: {product_id}")
         print(f"   Price: ${scrape_data['product']['price']}")
-        print(f"   Images: {len(scrape_data['product']['images'])}")
+        print(f"   Images: {len(scrape_data['images'])}")
         
         # Step 2: Select Images
         print_info("Step 2: Selecting images...")
-        selected_images = scrape_data["product"]["images"][:2]  # Select first 2 images
+        selected_images = scrape_data["images"][:2]  # Select first 2 images
         response = client.post("/api/select-images", json={
             "product_id": product_id,
-            "selected_images": selected_images
+            "image_urls": selected_images
         })
         
         if response.status_code != 200:
@@ -182,29 +182,27 @@ def test_single_product_pipeline():
         
         # Step 4: Approve Images
         print_info("Step 4: Approving images...")
-        approved_images = []
-        for img in bg_data["processed_images"]:
-            approved_images.append({
-                "url": img["processed_url"],
-                "quality_score": 0.9
-            })
+        # Extract URLs from processed images for approval
+        image_urls = [img["processed_url"] for img in bg_data["processed_images"]]
         
         response = client.post("/api/approve-images", json={
             "product_id": product_id,
-            "approved_images": approved_images
+            "image_urls": image_urls,
+            "approved": True  # Approve all images in test
         })
         
         if response.status_code != 200:
             print_error(f"Image approval failed: {response.status_code} - {response.text}")
             return False
         
-        print_success(f"Images approved: {len(approved_images)}")
+        approval_data = response.json()
+        print_success(f"Images approved: {approval_data['approved_count']}")
         
         # Step 5: Generate 3D Model
         print_info("Step 5: Generating 3D model...")
         response = client.post("/api/generate-3d", json={
             "product_id": product_id,
-            "approved_images": [img["url"] for img in approved_images],
+            "image_urls": image_urls,
             "quality": "high"
         })
         
@@ -233,7 +231,8 @@ def test_single_product_pipeline():
         print_info("Step 7: Optimizing model...")
         response = client.post("/api/optimize-model", json={
             "product_id": product_id,
-            "model_url": status_data.get("model_url", "mock_model.glb")
+            "image_urls": image_urls,  # Use same images for optimization
+            "settings": {"quality": "high", "optimize_for": "ios"}
         })
         
         if response.status_code != 200:
@@ -244,12 +243,12 @@ def test_single_product_pipeline():
         
         # Step 8: Save Product
         print_info("Step 8: Saving final product...")
-        response = client.post("/api/save-product", json={
-            "product_id": product_id,
-            "final_model_url": "optimized_model.glb",
+        response = client.post(f"/api/save-product/{product_id}", json={
+            "status": "completed",
             "metadata": {
                 "processing_time": "2.5 minutes",
-                "quality": "high"
+                "quality": "high",
+                "final_model_url": "optimized_model.glb"
             }
         })
         
@@ -275,11 +274,7 @@ def test_batch_processing():
         print_info("Step 1: Scraping category...")
         response = client.post("/api/scrape-category", json={
             "url": "https://www.ikea.com/us/en/cat/chairs-114/",
-            "max_products": 3,
-            "filters": {
-                "price_min": 50,
-                "price_max": 200
-            }
+            "limit": 3
         })
         
         if response.status_code != 200:

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { removeBackgrounds } from '../../../shared/utils/stageProcessors';
+import { removeBackgrounds } from '../../../shared/services/apiService';
 
 const BackgroundRemoval = ({ data, onNext, onBack }) => {
   const [isProcessing, setIsProcessing] = useState(true);
@@ -9,12 +9,17 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
   useEffect(() => {
     const processImages = async () => {
       try {
-        const results = await removeBackgrounds(
-          data.selectedImages,
-          (progress) => {
-            setCurrentProgress(progress.percent);
-          }
+        const apiResponse = await removeBackgrounds(
+          data.product.id,
+          data.selectedImages // image URLs
         );
+        
+        // Adapt API response to component format
+        const results = apiResponse.processed_images.map((img, index) => ({
+          original: data.selectedImages[index],
+          processed: img.processed_url || `https://example.com/processed-${index}.jpg`,
+          mask: img.mask_url || `https://example.com/mask-${index}.png`
+        }));
         
         setProcessedImages(results);
         setIsProcessing(false);

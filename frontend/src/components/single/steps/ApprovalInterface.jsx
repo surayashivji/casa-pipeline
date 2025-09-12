@@ -44,7 +44,11 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
             `}
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-checkered rounded-md"></div>
+              <div className="absolute inset-0 bg-gray-100 rounded-md" style={{
+                backgroundImage: `linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)`,
+                backgroundSize: '20px 20px',
+                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
+              }}></div>
               <img
                 src={image.original}
                 alt={`Processed ${image.id + 1}`}
@@ -102,16 +106,6 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
         </button>
       </div>
 
-      <style jsx>{`
-        .bg-checkered {
-          background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
-            linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
-            linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
-          background-size: 20px 20px;
-          background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-      `}</style>
     </div>
   );
 };

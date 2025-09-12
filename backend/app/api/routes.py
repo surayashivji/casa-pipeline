@@ -3,7 +3,7 @@ from app.schemas.product import (
     URLDetectionRequest, URLDetectionResponse, URLType,
     ScrapeRequest, ScrapeResponse, ImageSelectionRequest, ImageSelectionResponse,
     BackgroundRemovalRequest, BackgroundRemovalResponse, ImageApprovalRequest, ImageApprovalResponse,
-    Generate3DRequest, Generate3DResponse, ModelStatusResponse
+    Generate3DRequest, Generate3DResponse, ModelStatusResponse, ProductDimensions
 )
 from app.schemas.processing import (
     SaveProcessingStageRequest, SaveProcessingStageResponse,
@@ -13,14 +13,14 @@ from app.schemas.processing import (
     BatchProcessRequest, BatchProcessResponse,
     BatchStatusResponse
 )
-from app.services.mock_data import mock_data
+from app.services.mock_data import mock_data, MockDataService
 from app.core.database import get_db
 from app.models.product import Product
 from sqlalchemy.orm import Session
 import re
 import uuid
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any# Import WebSocket manager
 from app.websocket_manager import manager
 
@@ -112,7 +112,8 @@ def _detect_url_type(url: str) -> dict:
     ikea_patterns = [
         r'ikea\.com.*?/p/',
         r'ikea\.com.*?/products/',
-        r'ikea\.com.*?/item/'
+        r'ikea\.com.*?/item/',
+        r'ikea\.com.*?/cat/'  # Category URLs
     ]
     
     # Target detection patterns
@@ -137,8 +138,10 @@ def _detect_url_type(url: str) -> dict:
     # Check for IKEA
     for pattern in ikea_patterns:
         if re.search(pattern, url, re.IGNORECASE):
+            # Determine if it's a product or category URL
+            url_type = URLType.CATEGORY if '/cat/' in url else URLType.PRODUCT
             return {
-                'type': URLType.PRODUCT,
+                'type': url_type,
                 'retailer': 'IKEA',
                 'supported': True,
                 'confidence': 0.95
@@ -298,27 +301,46 @@ async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
             "cost": 0.05
         })
         
-        return ScrapeResponse(
-            product_id=str(product.id),
+        # Create Product object for response with dimensions in frontend format
+        product_data = Product(
+            id=str(product.id),
             url=request.url,
             name=mock_product['name'],
             brand=mock_product['brand'],
+            variant_info=mock_product.get('description', ''),
             price=mock_product['price'],
-            description=mock_product['description'],
-            dimensions=mock_product['dimensions'],
-            weight=mock_product['weight'],
+            width_inches=mock_product['dimensions']['width'],
+            height_inches=mock_product['dimensions']['height'],
+            depth_inches=mock_product['dimensions']['depth'],
+            weight_kg=mock_product['weight'],
             category=mock_product['category'],
             room_type=mock_product['room_type'],
             style_tags=mock_product['style_tags'],
             placement_type=mock_product['placement_type'],
             assembly_required=mock_product['assembly_required'],
             in_stock=mock_product['in_stock'],
-            images=mock_product['images'],
             retailer_id=mock_product['retailer_id'],
             ikea_item_number=mock_product.get('ikea_item_number'),
+            status="scraped",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        # Add frontend-expected fields
+        product_data.description = mock_product.get('description', '')
+        product_data.weight = mock_product['weight']
+        product_data.dimensions = ProductDimensions(
+            width=mock_product['dimensions']['width'],
+            height=mock_product['dimensions']['height'],
+            depth=mock_product['dimensions']['depth'],
+            unit=mock_product['dimensions']['unit']
+        )
+        
+        return ScrapeResponse(
+            product=product_data,
+            images=mock_product['images'],
             processing_time=2.5,
-            cost=0.05,
-            status="completed"
+            cost=0.05
         )
         
     except Exception as e:
@@ -336,13 +358,13 @@ async def select_images(request: ImageSelectionRequest, db: Session = Depends(ge
             raise HTTPException(status_code=404, detail="Product not found")
         
         # Mock image selection logic (select first 3-5 images)
-        selected_images = request.images[:min(5, len(request.images))]
+        selected_images = request.image_urls[:min(5, len(request.image_urls))]
         
         # Create processing stage
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
             stage_name="image_selection",
-            input_data={"total_images": len(request.images)},
+            input_data={"total_images": len(request.image_urls)},
             output_data={"selected_images": len(selected_images)},
             db=db
         )
@@ -358,13 +380,9 @@ async def select_images(request: ImageSelectionRequest, db: Session = Depends(ge
         })
         
         return ImageSelectionResponse(
-            product_id=str(request.product_id),
+            product_id=request.product_id,
             selected_images=selected_images,
-            total_available=len(request.images),
-            selection_criteria=["quality", "angle", "lighting"],
-            processing_time=1.2,
-            cost=0.0,
-            status="completed"
+            selected_count=len(selected_images)
         )
         
     except Exception as e:
@@ -383,7 +401,7 @@ async def remove_backgrounds(request: BackgroundRemovalRequest, db: Session = De
         
         # Mock background removal (generate processed image URLs)
         processed_images = []
-        for i, image_url in enumerate(request.images):
+        for i, image_url in enumerate(request.image_urls):
             processed_images.append({
                 "original_url": image_url,
                 "processed_url": f"https://s3.amazonaws.com/processed-{uuid.uuid4().hex[:8]}.png",
@@ -395,18 +413,17 @@ async def remove_backgrounds(request: BackgroundRemovalRequest, db: Session = De
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
             stage_name="background_removal",
-            input_data={"images": request.images},
+            input_data={"images": request.image_urls},
             output_data={"processed_images": processed_images},
             db=db
         )
         
         return BackgroundRemovalResponse(
-            product_id=str(request.product_id),
+            product_id=request.product_id,
             processed_images=processed_images,
-            total_processed=len(processed_images),
-            processing_time=sum(img["processing_time"] for img in processed_images),
-            cost=0.15 * len(processed_images),
-            status="completed"
+            total_processing_time=sum(img["processing_time"] for img in processed_images),
+            total_cost=0.15 * len(processed_images),
+            success_rate=1.0  # All successful in mock
         )
         
     except Exception as e:
@@ -427,19 +444,16 @@ async def approve_images(request: ImageApprovalRequest, db: Session = Depends(ge
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
             stage_name="image_approval",
-            input_data={"approved": request.approved, "feedback": request.feedback},
-            output_data={"approved_images": request.approved_images if request.approved else []},
+            input_data={"approved": request.approved, "image_count": len(request.image_urls)},
+            output_data={"approved_images": request.image_urls if request.approved else []},
             db=db
         )
         
         return ImageApprovalResponse(
-            product_id=str(request.product_id),
-            approved=request.approved,
-            approved_images=request.approved_images if request.approved else [],
-            feedback=request.feedback,
-            processing_time=0.5,
-            cost=0.0,
-            status="completed"
+            product_id=request.product_id,
+            status="approved" if request.approved else "rejected",
+            approved_count=len(request.image_urls) if request.approved else 0,
+            rejected_count=len(request.image_urls) if not request.approved else 0
         )
         
     except Exception as e:
@@ -473,7 +487,7 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
             stage_name="model_generation",
-            input_data={"images": request.images},
+            input_data={"images": request.image_urls},
             output_data=model_data,
             db=db
         )
@@ -490,23 +504,40 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
             "quality_score": model_data["quality_score"]
         })
         
+        # Generate a task ID for 3D generation
+        task_id = f"3d_gen_{uuid.uuid4().hex[:8]}"
+        
         return Generate3DResponse(
-            product_id=str(request.product_id),
-            model_url=model_data["model_url"],
-            preview_url=model_data["preview_url"],
-            file_size=model_data["file_size"],
-            vertices_count=model_data["vertices_count"],
-            triangles_count=model_data["triangles_count"],
-            materials_count=model_data["materials_count"],
-            textures_count=model_data["textures_count"],
-            generation_time=model_data["generation_time"],
-            quality_score=model_data["quality_score"],
-            cost=0.50,
-            status="completed"
+            product_id=request.product_id,
+            task_id=task_id,
+            status="processing",
+            estimated_completion=datetime.now() + timedelta(minutes=15),
+            cost=2.50
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"3D generation failed: {str(e)}")
+
+@router.get("/model-status/{task_id}", response_model=ModelStatusResponse)
+async def get_model_status(task_id: str, db: Session = Depends(get_db)):
+    """
+    Check the status of a 3D model generation task
+    """
+    try:
+        # Mock model status - in real implementation, this would check the actual task status
+        return ModelStatusResponse(
+            task_id=task_id,
+            status="completed",  # Mock as completed
+            progress=100,
+            model_url="https://s3.amazonaws.com/models/mock-model.glb",
+            processing_time=45.2,
+            cost=2.50,
+            model_quality=0.95,
+            lods_available=["high", "medium", "low"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Model status check failed: {str(e)}")
 
 @router.post("/optimize-model", response_model=ModelStatusResponse)
 async def optimize_model(request: Generate3DRequest, db: Session = Depends(get_db)):
@@ -554,31 +585,33 @@ async def optimize_model(request: Generate3DRequest, db: Session = Depends(get_d
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
             stage_name="optimization",
-            input_data={"original_model": request.model_url},
+            input_data={"image_count": len(request.image_urls), "settings": request.settings},
             output_data={"lod_versions": lod_versions},
             db=db
         )
         
         return ModelStatusResponse(
-            product_id=str(request.product_id),
-            model_url=request.model_url,
-            lod_versions=lod_versions,
-            total_optimization_time=12.8,
-            total_cost=0.10,
-            status="completed"
+            task_id=f"opt_{uuid.uuid4().hex[:8]}",
+            status="completed",
+            progress=100,
+            model_url="https://s3.amazonaws.com/models/optimized-model.glb",
+            processing_time=12.8,
+            cost=0.10,
+            model_quality=0.98,
+            lods_available=["high", "medium", "low"]
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model optimization failed: {str(e)}")
 
-@router.post("/save-product", response_model=UpdateProductStatusResponse)
-async def save_product(request: UpdateProductStatusRequest, db: Session = Depends(get_db)):
+@router.post("/save-product/{product_id}", response_model=UpdateProductStatusResponse)
+async def save_product(product_id: str, request: UpdateProductStatusRequest, db: Session = Depends(get_db)):
     """
     Step 7: Save final product to database
     """
     try:
         # Get product from database
-        product = db.query(Product).filter(Product.id == request.product_id).first()
+        product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
         
@@ -589,7 +622,7 @@ async def save_product(request: UpdateProductStatusRequest, db: Session = Depend
         
         # Create final processing stage
         stage = mock_data.create_processing_stage(
-            product_id=request.product_id,
+            product_id=product_id,
             stage_name="saving",
             input_data={"status": request.status},
             output_data={"saved": True, "metadata": request.metadata},
@@ -623,7 +656,7 @@ async def scrape_category(request: CategoryScrapeRequest, db: Session = Depends(
         # Generate mock products for the category
         mock_products = []
         for i in range(min(request.limit, 10)):  # Limit to 10 for testing
-            product_data = mock_data._generate_mock_product(f"{request.url}/product-{i+1}")
+            product_data = MockDataService._generate_mock_product(f"{request.url}/product-{i+1}")
             mock_products.append({
                 "url": product_data['url'],
                 "name": product_data['name'],

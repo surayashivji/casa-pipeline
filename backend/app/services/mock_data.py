@@ -9,7 +9,20 @@ from app.core.database import SessionLocal
 from datetime import datetime, timedelta
 import uuid
 import random
+import base64
 from typing import List, Dict, Any, Optional
+
+def generate_placeholder_image(width: int, height: int, text: str, bg_color: str = "#8b7355", text_color: str = "#ffffff") -> str:
+    """Generate a placeholder image as a data URL"""
+    svg = f'''
+    <svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="{bg_color}"/>
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="{text_color}">
+        {text}
+      </text>
+    </svg>
+    '''
+    return f"data:image/svg+xml;base64,{base64.b64encode(svg.encode()).decode()}"
 
 # Import the existing frontend mock data
 # We'll recreate the data structure here to avoid frontend dependencies
@@ -37,11 +50,11 @@ MOCK_PRODUCTS_DATA = [
         "assembly_required": True,
         "in_stock": True,
         "images": [
-            "https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818567_pe774489_s5.jpg",
-            "https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818568_pe774490_s5.jpg",
-            "https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818569_pe774491_s5.jpg",
-            "https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818570_pe774492_s5.jpg",
-            "https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0950871_pe800739_s5.jpg"
+            generate_placeholder_image(400, 300, "EKTORP 1", "#8b7355", "#ffffff"),
+            generate_placeholder_image(400, 300, "EKTORP 2", "#8b7355", "#ffffff"),
+            generate_placeholder_image(400, 300, "EKTORP 3", "#8b7355", "#ffffff"),
+            generate_placeholder_image(400, 300, "EKTORP 4", "#8b7355", "#ffffff"),
+            generate_placeholder_image(400, 300, "EKTORP 5", "#8b7355", "#ffffff")
         ]
     },
     {
@@ -282,7 +295,7 @@ class MockDataService:
             "assembly_required": random.choice([True, False]),
             "in_stock": random.choice([True, False]),
             "images": [
-                f"https://www.ikea.com/images/product_{i}.jpg" 
+                generate_placeholder_image(400, 300, f"Product {i}", "#8b7355", "#ffffff")
                 for i in range(1, random.randint(3, 6))
             ]
         }

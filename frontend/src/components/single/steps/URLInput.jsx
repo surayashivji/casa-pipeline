@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
-import { scrapeProduct } from '../../../shared/utils/stageProcessors';
+import { scrapeProduct } from '../../../shared/services/apiService';
 import { validateUrl, createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
 import ErrorMessage from '../../../shared/components/ErrorMessage';
 import LoadingState from '../../../shared/components/LoadingState';
@@ -35,8 +35,9 @@ const URLInput = ({ onNext }) => {
       );
       
       onNext({ 
-        product: result,
-        productData: result,
+        product: result.product,
+        productData: result.product,
+        images: result.images,
         scraping: {
           status: 'complete',
           data: result

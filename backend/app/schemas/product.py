@@ -33,14 +33,6 @@ class ProductBase(BaseModel):
 class ProductCreate(ProductBase):
     pass
 
-class Product(ProductBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-
 # API Request/Response Models for Product Operations
 
 class URLType(str, Enum):
@@ -48,6 +40,23 @@ class URLType(str, Enum):
     CATEGORY = "category"
     SEARCH = "search"
     UNKNOWN = "unknown"
+
+class ProductDimensions(BaseModel):
+    width: float
+    height: float
+    depth: float
+    unit: str = "inches"
+
+class Product(ProductBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    dimensions: Optional[ProductDimensions] = None
+    description: Optional[str] = None
+    weight: Optional[float] = None
+    
+    class Config:
+        from_attributes = True
 
 class URLDetectionRequest(BaseModel):
     url: str
@@ -68,12 +77,6 @@ class ScrapeResponse(BaseModel):
     images: List[str]  # Simple URLs for frontend
     processing_time: float
     cost: float
-
-class ProductDimensions(BaseModel):
-    width: float
-    height: float
-    depth: float
-    unit: str = "inches"
 
 class ImageSelectionRequest(BaseModel):
     product_id: UUID

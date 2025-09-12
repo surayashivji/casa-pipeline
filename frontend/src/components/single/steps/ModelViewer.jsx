@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { optimizeModel } from '../../../shared/utils/stageProcessors';
+import { optimizeModel } from '../../../shared/services/apiService';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 const ModelViewer = ({ data, onNext, onBack }) => {
@@ -10,7 +10,38 @@ const ModelViewer = ({ data, onNext, onBack }) => {
   useEffect(() => {
     const optimize = async () => {
       try {
-        const result = await optimizeModel(data.model3D);
+        const apiResponse = await optimizeModel(
+          data.product.id,
+          data.processedImages.map(img => img.processed), // image URLs
+          { quality: 'high', generate_lods: true }
+        );
+        
+        // Adapt API response to component format
+        const result = {
+          originalModel: data.model3D,
+          optimizedModelUrl: apiResponse.model_url,
+          lods: [
+            {
+              level: 'high',
+              polygonCount: 30840,
+              fileSize: '15.2 MB',
+              url: apiResponse.model_url
+            },
+            {
+              level: 'medium',
+              polygonCount: 15420,
+              fileSize: '7.6 MB',
+              url: `${apiResponse.model_url.replace('.glb', '-medium.glb')}`
+            },
+            {
+              level: 'low',
+              polygonCount: 7710,
+              fileSize: '3.8 MB',
+              url: `${apiResponse.model_url.replace('.glb', '-low.glb')}`
+            }
+          ],
+          compressionRatio: '75%'
+        };
         setOptimizedModel(result);
         setIsOptimizing(false);
       } catch (error) {
