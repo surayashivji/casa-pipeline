@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
@@ -55,6 +55,8 @@ class ProductImage(ProductImageBase):
 
 # 3D Model Schemas
 class Model3DBase(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     meshy_job_id: Optional[str] = None
     model_name: Optional[str] = None
     s3_url: str
@@ -85,6 +87,8 @@ class Model3D(Model3DBase):
 
 # Model LOD Schemas
 class ModelLODBase(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     lod_level: str  # 'high', 'medium', 'low'
     lod_order: int
     s3_url: str
@@ -167,3 +171,76 @@ class ProductWithProcessing(BaseModel):
     
     class Config:
         from_attributes = True
+
+# API Request/Response Models for Batch Processing
+
+class CategoryScrapeRequest(BaseModel):
+    url: str
+    limit: int = 50
+
+class CategoryScrapeResponse(BaseModel):
+    category_url: str
+    total_found: int
+    products: List[dict]  # Will contain product data
+    scraping_time: float
+    cost: float
+
+class BatchProcessRequest(BaseModel):
+    product_ids: List[UUID]
+    settings: Optional[Dict[str, Any]] = {}
+
+class BatchProcessResponse(BaseModel):
+    batch_id: str
+    status: str
+    total_products: int
+    estimated_completion: Optional[datetime] = None
+    estimated_cost: float
+
+class BatchStatusResponse(BaseModel):
+    batch_id: str
+    status: str
+    progress: Optional[int] = None
+    processed: int
+    total: int
+    successful: int
+    failed: int
+    progress_percentage: Optional[int] = None
+    estimated_completion: Optional[datetime] = None
+    current_cost: float
+
+# Additional Processing Schemas for API
+
+class SaveProcessingStageRequest(BaseModel):
+    product_id: UUID
+    stage_name: str
+    stage_order: int
+    status: str = "pending"
+    processing_time_seconds: Optional[float] = None
+    cost_usd: float = 0.0
+    input_data: Optional[Dict[str, Any]] = None
+    output_data: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class SaveProcessingStageResponse(BaseModel):
+    id: UUID
+    product_id: UUID
+    stage_name: str
+    status: str
+    created_at: datetime
+
+class SaveProductImagesRequest(BaseModel):
+    product_id: UUID
+    images: List[Dict[str, Any]]
+
+class SaveProductImagesResponse(BaseModel):
+    saved_images: List[Dict[str, Any]]
+    total_saved: int
+
+class UpdateProductStatusRequest(BaseModel):
+    status: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class UpdateProductStatusResponse(BaseModel):
+    id: UUID
+    status: str
+    updated_at: datetime

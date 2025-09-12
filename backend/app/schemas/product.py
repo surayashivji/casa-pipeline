@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
 from uuid import UUID
+from enum import Enum
 
 class ProductBase(BaseModel):
     url: str
@@ -39,3 +40,90 @@ class Product(ProductBase):
     
     class Config:
         from_attributes = True
+
+# API Request/Response Models for Product Operations
+
+class URLType(str, Enum):
+    PRODUCT = "product"
+    CATEGORY = "category"
+    SEARCH = "search"
+    UNKNOWN = "unknown"
+
+class URLDetectionRequest(BaseModel):
+    url: str
+
+class URLDetectionResponse(BaseModel):
+    url: str
+    type: URLType
+    retailer: str
+    supported: bool
+    confidence: float
+
+class ScrapeRequest(BaseModel):
+    url: str
+    mode: str = "single"
+
+class ScrapeResponse(BaseModel):
+    product: Product  # Use existing Product schema
+    images: List[str]  # Simple URLs for frontend
+    processing_time: float
+    cost: float
+
+class ProductDimensions(BaseModel):
+    width: float
+    height: float
+    depth: float
+    unit: str = "inches"
+
+class ImageSelectionRequest(BaseModel):
+    product_id: UUID
+    image_urls: List[str]
+
+class ImageSelectionResponse(BaseModel):
+    product_id: UUID
+    selected_images: List[str]
+    selected_count: int
+
+class BackgroundRemovalRequest(BaseModel):
+    product_id: UUID
+    image_urls: List[str]
+
+class BackgroundRemovalResponse(BaseModel):
+    product_id: UUID
+    processed_images: List[Dict[str, Any]]  # Matches frontend expectations
+    total_processing_time: float
+    total_cost: float
+    success_rate: float
+
+class ImageApprovalRequest(BaseModel):
+    product_id: UUID
+    image_urls: List[str]
+    approved: bool
+
+class ImageApprovalResponse(BaseModel):
+    product_id: UUID
+    status: str
+    approved_count: int
+    rejected_count: int
+
+class Generate3DRequest(BaseModel):
+    product_id: UUID
+    image_urls: List[str]
+    settings: Optional[Dict[str, Any]] = {}
+
+class Generate3DResponse(BaseModel):
+    product_id: UUID
+    task_id: str
+    status: str
+    estimated_completion: datetime
+    cost: float
+
+class ModelStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    progress: Optional[int] = None
+    model_url: Optional[str] = None
+    processing_time: Optional[float] = None
+    cost: Optional[float] = None
+    model_quality: Optional[float] = None
+    lods_available: Optional[List[str]] = None
