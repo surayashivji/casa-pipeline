@@ -21,10 +21,11 @@ import re
 import uuid
 import asyncio
 from datetime import datetime
-from typing import List, Dict, Any
-
-# Import WebSocket manager
+from typing import List, Dict, Any# Import WebSocket manager
 from app.websocket_manager import manager
+
+# Import monitoring
+from app.middleware import metrics_collector
 
 router = APIRouter()
 
@@ -676,3 +677,76 @@ async def get_batch_history(limit: int = 20, offset: int = 0, db: Session = Depe
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get batch history: {str(e)}")
+
+# ============================================================================
+# MONITORING AND HEALTH ENDPOINTS
+# ============================================================================
+
+@router.get("/health")
+async def health_check():
+    """
+    Health check endpoint with detailed status
+    """
+    try:
+        health_status = metrics_collector.metrics.get_health_status()
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "version": "1.0.0",
+            "uptime": "running",
+            "metrics": health_status
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e)
+        }
+
+@router.get("/metrics")
+async def get_metrics():
+    """
+    Get detailed metrics and statistics
+    """
+    try:
+        metrics_summary = metrics_collector.get_metrics_summary()
+        
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "metrics": metrics_summary
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+
+@router.get("/metrics/reset")
+async def reset_metrics():
+    """
+    Reset all metrics (for testing purposes)
+    """
+    try:
+        # Reset metrics
+        metrics_collector._metrics = metrics_collector.Metrics()
+        
+        return {
+            "message": "Metrics reset successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset metrics: {str(e)}")
+
+@router.get("/logs")
+async def get_recent_logs(limit: int = 100):
+    """
+    Get recent log entries (for debugging)
+    """
+    try:
+        # This would typically read from log files
+        # For now, return a mock response
+        return {
+            "message": "Log retrieval not implemented in this version",
+            "timestamp": datetime.now().isoformat(),
+            "limit": limit
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get logs: {str(e)}")

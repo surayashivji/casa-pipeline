@@ -13,12 +13,19 @@ from datetime import datetime
 from app.api import routes
 from app.websocket_manager import manager
 
+# Import middleware
+from app.middleware import (
+    setup_logging, 
+    setup_error_handlers, 
+    RequestLogger,
+    metrics_collector
+)
+
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logging(log_level="INFO")
 
 # WebSocket manager is now imported from websocket_manager.py
 
@@ -37,6 +44,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Setup error handlers
+setup_error_handlers(app)
+
+# Add request logging middleware
+app.add_middleware(RequestLogger)
 
 # Configure CORS
 app.add_middleware(
