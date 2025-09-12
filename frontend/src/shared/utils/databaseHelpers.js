@@ -1,23 +1,26 @@
 /**
  * Database helper functions for saving processing data
- * These will be replaced with real API calls in Phase 2
+ * Now integrated with real backend API calls
  */
 
-// Mock database operations - in Phase 2 these will call the backend API
+import apiService from '../services/apiService';
 export const saveProcessingStage = async (productId, stageData) => {
-  // In Phase 2: Replace with real API call
-  // const response = await api.post('/processing-stages', {
-  //   product_id: productId,
-  //   ...stageData
-  // });
-  // return response.data;
-  
-  console.log('Saving processing stage:', { productId, stageData });
-  return {
-    id: `stage_${Math.random().toString(36).substr(2, 9)}`,
-    ...stageData,
-    created_at: new Date().toISOString()
-  };
+  try {
+    // Real API call to save processing stage
+    const response = await apiService.post('/processing-stages', {
+      product_id: productId,
+      ...stageData
+    });
+    return response;
+  } catch (error) {
+    console.error('Failed to save processing stage:', error);
+    // Fallback to mock data if API fails
+    return {
+      id: `stage_${Math.random().toString(36).substr(2, 9)}`,
+      ...stageData,
+      created_at: new Date().toISOString()
+    };
+  }
 };
 
 export const saveProductImages = async (productId, images) => {

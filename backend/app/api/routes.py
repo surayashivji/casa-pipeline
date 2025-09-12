@@ -28,7 +28,6 @@ from app.websocket_manager import manager
 from app.middleware import metrics_collector
 
 router = APIRouter(
-    prefix="/api",
     tags=["Room Decorator Pipeline"],
     responses={
         404: {"description": "Not found"},
