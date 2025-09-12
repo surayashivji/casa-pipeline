@@ -8,7 +8,10 @@ from app.schemas.product import (
 from app.schemas.processing import (
     SaveProcessingStageRequest, SaveProcessingStageResponse,
     SaveProductImagesRequest, SaveProductImagesResponse,
-    UpdateProductStatusRequest, UpdateProductStatusResponse
+    UpdateProductStatusRequest, UpdateProductStatusResponse,
+    CategoryScrapeRequest, CategoryScrapeResponse,
+    BatchProcessRequest, BatchProcessResponse,
+    BatchStatusResponse
 )
 from app.services.mock_data import mock_data
 from app.core.database import get_db
@@ -466,3 +469,160 @@ async def save_product(request: UpdateProductStatusRequest, db: Session = Depend
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Product saving failed: {str(e)}")
+
+# ============================================================================
+# BATCH PROCESSING ENDPOINTS
+# ============================================================================
+
+@router.post("/scrape-category", response_model=CategoryScrapeResponse)
+async def scrape_category(request: CategoryScrapeRequest, db: Session = Depends(get_db)):
+    """
+    Scrape multiple products from a category URL
+    """
+    try:
+        # Detect URL type first
+        detection_result = _detect_url_type(request.url)
+        if not detection_result['supported']:
+            raise HTTPException(status_code=400, detail="Unsupported category URL")
+        
+        # Generate mock products for the category
+        mock_products = []
+        for i in range(min(request.limit, 10)):  # Limit to 10 for testing
+            product_data = mock_data._generate_mock_product(f"{request.url}/product-{i+1}")
+            mock_products.append({
+                "url": product_data['url'],
+                "name": product_data['name'],
+                "brand": product_data['brand'],
+                "price": product_data['price'],
+                "category": product_data['category'],
+                "room_type": product_data['room_type'],
+                "images": product_data['images'][:3]  # Limit images for batch
+            })
+        
+        # Note: In real implementation, this would create a processing stage
+        # For now, we'll skip database operations for category scraping
+        
+        return CategoryScrapeResponse(
+            category_url=request.url,
+            total_found=len(mock_products),
+            products=mock_products,
+            scraping_time=5.2,
+            cost=0.10 * len(mock_products)
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Category scraping failed: {str(e)}")
+
+@router.post("/batch-process", response_model=BatchProcessResponse)
+async def batch_process(request: BatchProcessRequest, db: Session = Depends(get_db)):
+    """
+    Process multiple products through the entire pipeline
+    """
+    try:
+        # Create batch job
+        batch_job = mock_data.create_mock_batch_job(
+            product_ids=request.product_ids,
+            settings=request.settings
+        )
+        
+        # Simulate batch processing
+        total_products = len(request.product_ids)
+        successful_products = int(total_products * 0.85)  # 85% success rate
+        failed_products = total_products - successful_products
+        
+        # Note: In real implementation, this would create a processing stage
+        # For now, we'll skip database operations for batch processing
+        
+        return BatchProcessResponse(
+            batch_id=batch_job['id'],
+            total_products=total_products,
+            estimated_completion=datetime.now().replace(microsecond=0),  # Mock completion time
+            estimated_cost=total_products * 0.75,  # $0.75 per product
+            status="processing"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
+
+@router.get("/batch-status/{batch_id}", response_model=BatchStatusResponse)
+async def get_batch_status(batch_id: str, db: Session = Depends(get_db)):
+    """
+    Get the status of a batch processing job
+    """
+    try:
+        # Mock batch status (in real implementation, this would query the database)
+        mock_status = {
+            "batch_id": batch_id,
+            "status": "processing",
+            "progress": 65,
+            "processed": 13,
+            "total": 20,
+            "successful": 11,
+            "failed": 2,
+            "progress_percentage": 65,
+            "estimated_completion": "2024-01-15T14:30:00Z",
+            "current_cost": 15.50
+        }
+        
+        return BatchStatusResponse(
+            batch_id=mock_status["batch_id"],
+            status=mock_status["status"],
+            progress=mock_status["progress"],
+            processed=mock_status["processed"],
+            total=mock_status["total"],
+            successful=mock_status["successful"],
+            failed=mock_status["failed"],
+            progress_percentage=mock_status["progress_percentage"],
+            estimated_completion=datetime.fromisoformat(mock_status["estimated_completion"].replace('Z', '+00:00')),
+            current_cost=mock_status["current_cost"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get batch status: {str(e)}")
+
+@router.post("/batch-cancel/{batch_id}")
+async def cancel_batch(batch_id: str, db: Session = Depends(get_db)):
+    """
+    Cancel a running batch processing job
+    """
+    try:
+        # Mock batch cancellation
+        return {
+            "batch_id": batch_id,
+            "status": "cancelled",
+            "message": "Batch processing cancelled successfully",
+            "cancelled_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel batch: {str(e)}")
+
+@router.get("/batch-history")
+async def get_batch_history(limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
+    """
+    Get history of batch processing jobs
+    """
+    try:
+        # Mock batch history
+        mock_history = []
+        for i in range(min(limit, 5)):  # Return up to 5 mock entries
+            mock_history.append({
+                "batch_id": f"batch_{uuid.uuid4().hex[:8]}",
+                "status": ["completed", "processing", "failed", "cancelled"][i % 4],
+                "total_products": 10 + i * 5,
+                "successful_products": 8 + i * 4,
+                "failed_products": 2 + i,
+                "created_at": datetime.now().isoformat(),
+                "completed_at": datetime.now().isoformat() if i % 2 == 0 else None,
+                "total_cost": 15.50 + i * 5.25
+            })
+        
+        return {
+            "batches": mock_history,
+            "total": len(mock_history),
+            "limit": limit,
+            "offset": offset
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get batch history: {str(e)}")
