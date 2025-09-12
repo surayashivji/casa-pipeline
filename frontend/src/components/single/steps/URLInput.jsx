@@ -1,60 +1,62 @@
 import { useState } from 'react';
 import { LinkIcon } from '@heroicons/react/24/outline';
 import { scrapeProduct } from '../../../shared/utils/stageProcessors';
+import { validateUrl, createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
+import ErrorMessage from '../../../shared/components/ErrorMessage';
+import LoadingState from '../../../shared/components/LoadingState';
 
 const URLInput = ({ onNext }) => {
   const [url, setUrl] = useState('');
   const [isValidating, setIsValidating] = useState(false);
-  const [error, setError] = useState('');
-
-  const validateUrl = (url) => {
-    const supportedRetailers = [
-      'ikea.com',
-      'target.com',
-      'westelm.com',
-      'urbanoutfitters.com'
-    ];
-    
-    try {
-      const urlObj = new URL(url);
-      return supportedRetailers.some(retailer => urlObj.hostname.includes(retailer));
-    } catch {
-      return false;
-    }
-  };
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!url.trim()) {
-      setError('Please enter a product URL');
-      return;
-    }
-
-    if (!validateUrl(url)) {
-      setError('Please enter a valid URL from a supported retailer (IKEA, Target, West Elm, Urban Outfitters)');
+    // Clear previous errors
+    setError(null);
+    
+    // Validate URL format and domain
+    const validationError = validateUrl(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setIsValidating(true);
-    setError('');
 
     try {
-      // Use shared scraping function
-      const product = await scrapeProduct(url);
+      // Use retry logic for API calls
+      const result = await handleApiError(
+        () => scrapeProduct(url),
+        3, // max retries
+        1000 // delay between retries
+      );
       
-      setIsValidating(false);
       onNext({ 
-        product,
+        product: result,
+        productData: result,
         scraping: {
           status: 'complete',
-          data: product
+          data: result
         }
       });
     } catch (err) {
-      setError('Failed to scrape product. Please try again.');
+      setError(err);
+      setRetryCount(prev => prev + 1);
+    } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    handleSubmit({ preventDefault: () => {} });
+  };
+
+  const handleDismiss = () => {
+    setError(null);
   };
 
   return (
@@ -86,30 +88,13 @@ const URLInput = ({ onNext }) => {
             />
           </div>
           {error && (
-            <p className="mt-2 text-sm text-red-600">{error}</p>
+            <ErrorMessage 
+              error={error} 
+              onRetry={handleRetry} 
+              onDismiss={handleDismiss}
+              className="mt-2"
+            />
           )}
-        </div>
-
-        <div className="bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl p-5 shadow-soft">
-          <h3 className="text-sm font-semibold text-primary-900 mb-3">Supported Retailers:</h3>
-          <ul className="text-sm text-primary-800 space-y-2">
-            <li className="flex items-center">
-              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mr-2"></div>
-              IKEA (ikea.com)
-            </li>
-            <li className="flex items-center">
-              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mr-2"></div>
-              Target (target.com)
-            </li>
-            <li className="flex items-center">
-              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mr-2"></div>
-              West Elm (westelm.com)
-            </li>
-            <li className="flex items-center">
-              <div className="w-1.5 h-1.5 bg-primary-500 rounded-full mr-2"></div>
-              Urban Outfitters (urbanoutfitters.com)
-            </li>
-          </ul>
         </div>
 
         <div className="flex justify-end">

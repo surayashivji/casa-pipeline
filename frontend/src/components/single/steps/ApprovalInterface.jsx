@@ -34,12 +34,6 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
         </p>
       </div>
 
-      <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4">
-        <p className="text-indigo-800">
-          {approvedCount} of {approvedImages.length} images approved for 3D generation
-        </p>
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         {approvedImages.map((image) => (
           <div

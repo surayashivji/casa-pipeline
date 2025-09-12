@@ -69,7 +69,7 @@ const CategoryInput = ({ onNext, onBack }) => {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://www.ikea.com/us/en/cat/chairs-20202/"
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               disabled={isValidating}
             />
           </div>
@@ -78,9 +78,9 @@ const CategoryInput = ({ onNext, onBack }) => {
           )}
         </div>
 
-        <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-purple-900 mb-2">Supported URL Types:</h3>
-          <ul className="text-sm text-purple-800 space-y-1">
+        <div className="bg-primary-50 border border-primary-200 rounded-md p-4">
+          <h3 className="text-sm font-medium text-primary-900 mb-2">Supported URL Types:</h3>
+          <ul className="text-sm text-primary-800 space-y-1">
             <li>• Category pages (e.g., /cat/chairs-20202/)</li>
             <li>• Search results (e.g., /search/?q=dining+table)</li>
             <li>• Collection pages (e.g., /rooms/living-room/)</li>
@@ -102,7 +102,7 @@ const CategoryInput = ({ onNext, onBack }) => {
           <button
             type="submit"
             disabled={isValidating || !url.trim()}
-            className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {isValidating ? (
               <>

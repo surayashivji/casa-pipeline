@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { generate3DModel } from '../../../shared/utils/stageProcessors';
 import { CheckIcon, CubeIcon } from '@heroicons/react/24/solid';
+import { createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
+import ErrorMessage from '../../../shared/components/ErrorMessage';
 
 const ModelGeneration = ({ data, onNext, onBack }) => {
   const [isGenerating, setIsGenerating] = useState(true);
@@ -8,29 +10,39 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
   const [progress, setProgress] = useState(0);
   const [model3D, setModel3D] = useState(null);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const generateModel = async () => {
       try {
-        const result = await generate3DModel(
-          data.processedImages,
-          data.product,
-          (progressData) => {
-            setCurrentStep(progressData.step);
-            setProgress(progressData.progress);
-          }
+        const result = await handleApiError(
+          () => generate3DModel(
+            data.processedImages,
+            data.product,
+            (progressData) => {
+              setCurrentStep(progressData.step);
+              setProgress(progressData.progress);
+            }
+          ),
+          2, // max retries for 3D generation
+          2000 // longer delay for 3D generation
         );
         
         setModel3D(result);
         setIsGenerating(false);
       } catch (err) {
-        setError(err.message);
+        setError(createError(
+          err.message || 'Failed to generate 3D model',
+          ERROR_TYPES.PROCESSING,
+          ERROR_SEVERITY.HIGH,
+          { originalError: err, retryCount }
+        ));
         setIsGenerating(false);
       }
     };
 
     generateModel();
-  }, [data]);
+  }, [data, retryCount]);
 
   const handleContinue = () => {
     onNext({ 
@@ -42,32 +54,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
     });
   };
 
+
   const handleRetry = () => {
     setIsGenerating(true);
     setError(null);
     setProgress(0);
-    
-    // Re-trigger the effect
-    const generateModel = async () => {
-      try {
-        const result = await generate3DModel(
-          data.processedImages,
-          data.product,
-          (progressData) => {
-            setCurrentStep(progressData.step);
-            setProgress(progressData.progress);
-          }
-        );
-        
-        setModel3D(result);
-        setIsGenerating(false);
-      } catch (err) {
-        setError(err.message);
-        setIsGenerating(false);
-      }
-    };
-    
-    generateModel();
+    setRetryCount(prev => prev + 1);
+  };
+
+  const handleDismiss = () => {
+    setError(null);
   };
 
   if (error) {
@@ -80,30 +76,18 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           </p>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-start space-x-3">
-            <svg className="h-6 w-6 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="flex-1">
-              <h3 className="font-medium text-red-900">Generation Failed</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
-          </div>
-        </div>
+        <ErrorMessage 
+          error={error} 
+          onRetry={handleRetry} 
+          onDismiss={handleDismiss}
+        />
 
-        <div className="flex justify-between">
+        <div className="flex justify-start">
           <button
             onClick={onBack}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
           >
             Back
-          </button>
-          <button
-            onClick={handleRetry}
-            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            Retry Generation
           </button>
         </div>
       </div>
@@ -121,28 +105,30 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
 
       {isGenerating ? (
         <div className="space-y-6">
-          <div className="bg-primary-50 rounded-lg p-8">
-            <div className="flex flex-col items-center">
-              <div className="relative">
-                <CubeIcon className="h-16 w-16 text-primary-600 animate-pulse" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="animate-spin h-20 w-20 border-4 border-primary-600 border-t-transparent rounded-full"></div>
+          <div className="bg-primary-50 rounded-lg p-8 border border-primary-200">
+            <div className="flex flex-col items-center text-center">
+              {/* Simple Spinning Loader */}
+              <div className="mb-6">
+                <div className="animate-spin h-12 w-12 border-3 border-primary-600 border-t-transparent rounded-full flex items-center justify-center">
+                  <CubeIcon className="h-6 w-6 text-primary-600" />
                 </div>
               </div>
-              <p className="mt-4 text-lg font-medium text-gray-900">{currentStep}</p>
-              <p className="mt-1 text-sm text-gray-600">Please wait while we generate your 3D model</p>
+              
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Generating 3D Model</h3>
+              <p className="text-primary-700 font-medium mb-1">{currentStep}</p>
+              <p className="text-sm text-gray-600">This may take a few minutes...</p>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Progress</span>
-              <span>{progress}%</span>
+          {/* Clean Progress Bar */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Progress</span>
+              <span className="text-sm font-semibold text-primary-600">{progress}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>

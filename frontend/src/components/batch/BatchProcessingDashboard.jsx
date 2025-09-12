@@ -14,12 +14,12 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
 
   // Processing stages that match our shared logic
   const stages = [
-    { key: 'scraping', name: 'Scraping', icon: '📊' },
-    { key: 'imageSelection', name: 'Images', icon: '🖼️' },
-    { key: 'backgroundRemoval', name: 'BG Removal', icon: '✂️' },
-    { key: 'modelGeneration', name: '3D Gen', icon: '🎲' },
-    { key: 'optimization', name: 'Optimize', icon: '⚡' },
-    { key: 'saving', name: 'Save', icon: '💾' }
+    { key: 'scraping', name: 'Scraping', icon: '📊', description: 'Scraped Image' },
+    { key: 'imageSelection', name: 'Images', icon: '🖼️', description: 'Selected Images' },
+    { key: 'backgroundRemoval', name: 'BG Removal', icon: '✂️', description: 'Background Removed' },
+    { key: 'modelGeneration', name: '3D Gen', icon: '🎲', description: '3D Model' },
+    { key: 'optimization', name: 'Optimize', icon: '⚡', description: 'Optimization' },
+    { key: 'saving', name: 'Save', icon: '💾', description: 'Saved to Database' }
   ];
 
   useEffect(() => {
@@ -184,23 +184,25 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-blue-600">Processing</p>
-            <p className="mt-1 text-2xl font-bold text-blue-900">{processingCount}</p>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-green-600">Completed</p>
-            <p className="mt-1 text-2xl font-bold text-green-900">{completedCount}</p>
-          </div>
-          <div className="bg-red-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-red-600">Failed</p>
-            <p className="mt-1 text-2xl font-bold text-red-900">{failedCount}</p>
-          </div>
-          <div className="bg-purple-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-purple-600">Progress</p>
-            <p className="mt-1 text-2xl font-bold text-purple-900">{Math.round(currentProgress)}%</p>
+        {/* Summary Stats - Compact Text Format */}
+        <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">Processing: {processingCount}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">Completed: {completedCount}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">Failed: {failedCount}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">Progress: {Math.round(currentProgress)}%</span>
+            </div>
           </div>
         </div>
 
@@ -223,7 +225,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                 {/* Main Row */}
                 <div 
                   className={`px-4 py-3 cursor-pointer transition-colors ${
-                    product.overallStatus === 'processing' ? 'bg-purple-50 hover:bg-purple-100' :
+                    product.overallStatus === 'processing' ? 'bg-primary-50 hover:bg-primary-100' :
                     product.overallStatus === 'completed' ? 'bg-green-50 hover:bg-green-100' :
                     product.overallStatus === 'failed' ? 'bg-red-50 hover:bg-red-100' :
                     'bg-gray-50 hover:bg-gray-100'
@@ -231,50 +233,57 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                   onClick={() => toggleProductExpansion(product.id)}
                 >
                   <div className="flex items-center justify-between">
-                    {/* Product Name and Expand Icon */}
+                    {/* Product Info */}
                     <div className="flex items-center space-x-3 flex-1">
                       <button className="text-gray-500 hover:text-gray-700">
                         {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
                       </button>
-                      <h4 className="font-medium text-gray-900">{product.name}</h4>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900">{product.name}</h4>
+                        <p className="text-sm text-gray-500">
+                          {product.overallStatus === 'processing' && product.currentStage && 
+                            `Currently: ${stages.find(s => s.key === product.currentStage)?.name || product.currentStage}`
+                          }
+                          {product.overallStatus === 'completed' && 
+                            `Completed in ${((product.endTime - product.startTime) / 1000).toFixed(1)}s`
+                          }
+                          {product.overallStatus === 'failed' && 
+                            'Processing failed'
+                          }
+                          {product.overallStatus === 'pending' && 
+                            'Waiting to start'
+                          }
+                        </p>
+                      </div>
                     </div>
                     
-                    {/* Stage Icons */}
-                    <div className="flex items-center space-x-4">
+                    {/* Stage Status with Descriptive Text */}
+                    <div className="flex items-center space-x-8">
                       {stages.map(stage => {
                         const stageData = product.stages[stage.key];
                         const isCurrentStage = product.currentStage === stage.key;
                         
                         return (
-                          <div key={stage.key} className="flex flex-col items-center">
-                            <span className="text-xs text-gray-500 mb-1">{stage.icon}</span>
-                            {getStageIcon(stageData.status, isCurrentStage)}
+                          <div key={stage.key} className="flex flex-col items-center min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-sm">{stage.icon}</span>
+                              {getStageIcon(stageData.status, isCurrentStage)}
+                            </div>
+                            <span className="text-xs text-gray-600 text-center leading-tight max-w-16">
+                              {stage.description}
+                            </span>
                           </div>
                         );
                       })}
                     </div>
                     
-                    {/* Status and Actions */}
+                    {/* Actions - Only for completed items */}
                     <div className="flex items-center space-x-4 ml-6">
-                      {product.overallStatus === 'completed' && (
-                        <>
-                          <span className="text-sm text-gray-500">
-                            {((product.endTime - product.startTime) / 1000).toFixed(1)}s
-                          </span>
-                          <button className="text-primary-600 hover:text-primary-700 font-medium text-sm">
-                            Download
-                          </button>
-                        </>
-                      )}
                       {product.overallStatus === 'failed' && (
                         <button className="text-gray-600 hover:text-gray-700 font-medium text-sm">
                           Retry
                         </button>
-                      )}
-                      {product.overallStatus === 'processing' && (
-                        <span className="text-sm text-purple-600 font-medium">
-                          Processing...
-                        </span>
                       )}
                     </div>
                   </div>
@@ -283,11 +292,14 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                 {/* Expanded Details */}
                 {isExpanded && result && (
                   <div className="px-6 py-4 bg-white border-t border-gray-200">
-                    <ProductPipelineView 
-                      productResult={result}
-                      layout="grid"
-                      showStages={['imageSelection', 'backgroundRemoval', 'modelGeneration', 'optimization']}
-                    />
+                    <div className="space-y-4">
+                      {/* Pipeline View */}
+                      <ProductPipelineView 
+                        productResult={result}
+                        layout="grid"
+                        showStages={['imageSelection', 'backgroundRemoval', 'modelGeneration', 'optimization']}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -304,21 +316,13 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
             <ArrowPathIcon className="h-5 w-5" />
             <span>New Batch</span>
           </button>
-          <div className="space-x-3">
-            <button 
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              disabled={isProcessing}
-            >
-              Export Report
-            </button>
-            <button 
-              className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center space-x-2 disabled:opacity-50"
-              disabled={completedCount === 0}
-            >
-              <ArrowDownTrayIcon className="h-5 w-5" />
-              <span>Download All ({completedCount})</span>
-            </button>
-          </div>
+          <button 
+            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center space-x-2 disabled:opacity-50"
+            disabled={completedCount === 0}
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            <span>Download All ({completedCount})</span>
+          </button>
         </div>
       </div>
     </div>

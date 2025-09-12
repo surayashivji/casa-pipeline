@@ -6,7 +6,7 @@ const ModeSelector = ({ mode, onModeChange }) => {
     {
       id: 'single',
       name: 'Single Product',
-      description: 'Process one product at a time with full control',
+      description: 'Process one product at a time.',
       icon: CubeIcon,
       features: [
         'Manual image selection',

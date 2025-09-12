@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { saveResults } from '../../../shared/utils/stageProcessors';
-import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
+import { ServerIcon } from '@heroicons/react/24/outline';
+import ProductPipelineView from '../../../shared/components/ProductPipelineView';
 
 const SaveConfirmation = ({ data, onNext, onBack }) => {
   const [isSaving, setIsSaving] = useState(false);
@@ -43,69 +44,33 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Save & Export</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Save to Database</h2>
         <p className="mt-2 text-gray-600">
-          Save your 3D model and product data
+          Save your 3D model and product data to the pipeline database
         </p>
       </div>
 
       {!saved ? (
         <div className="space-y-6">
+          {/* Product Pipeline Results */}
           <div className="bg-gray-50 rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Ready to Save</h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Product data scraped</p>
-                  <p className="text-sm text-gray-600">{data.product.name}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Images processed</p>
-                  <p className="text-sm text-gray-600">{data.processedImages?.length || 0} images with backgrounds removed</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">3D model generated</p>
-                  <p className="text-sm text-gray-600">
-                    {data.model3D?.vertices?.toLocaleString() || 0} vertices, {data.model3D?.fileSize || 'N/A'}
-                  </p>
-                </div>
-              </div>
-
-              {data.optimizedModel && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Model optimized</p>
-                    <p className="text-sm text-gray-600">3 LOD levels created</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Pipeline Results</h3>
+            <ProductPipelineView 
+              productResult={{
+                product: data.product,
+                processedImages: data.processedImages,
+                model3D: data.optimizedModel || data.model3D,
+                stages: {
+                  scraping: data.scraping,
+                  imageSelection: data.imageSelection,
+                  backgroundRemoval: data.backgroundRemoval,
+                  modelGeneration: data.modelGeneration,
+                  optimization: data.optimization
+                }
+              }}
+              layout="grid"
+              showStages={['imageSelection', 'backgroundRemoval', 'modelGeneration', 'optimization']}
+            />
           </div>
 
           <div className="flex justify-between">
@@ -127,8 +92,8 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
                 </>
               ) : (
                 <>
-                  <CloudArrowUpIcon className="h-5 w-5" />
-                  <span>Save to Cloud</span>
+                  <ServerIcon className="h-5 w-5" />
+                  <span>Product Results</span>
                 </>
               )}
             </button>
@@ -146,13 +111,13 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-green-900">Successfully Saved!</h3>
                 <p className="mt-1 text-sm text-green-700">
-                  Your 3D model and product data have been saved to the cloud.
+                  Your 3D model and product data have been saved to the database.
                 </p>
                 {saveData && (
                   <div className="mt-3 space-y-1 text-sm">
                     <p><span className="font-medium">Product ID:</span> {saveData.productId}</p>
                     <p><span className="font-medium">Saved at:</span> {new Date(saveData.savedAt).toLocaleString()}</p>
-                    <p><span className="font-medium">S3 Location:</span> <code className="text-xs bg-green-100 px-1 py-0.5 rounded">{saveData.s3Location}</code></p>
+                    <p><span className="font-medium">Database ID:</span> <code className="text-xs bg-green-100 px-1 py-0.5 rounded">{saveData.productId}</code></p>
                   </div>
                 )}
               </div>
@@ -165,6 +130,7 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
               <li>• View your model in the 3D library</li>
               <li>• Download for use in iOS app</li>
               <li>• Process another product</li>
+              <li>• Access from batch processing dashboard</li>
             </ul>
           </div>
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
 const ImageSelector = ({ data, onNext, onBack }) => {
-  const [selectedImages, setSelectedImages] = useState(data.selectedImages || []);
+  const [selectedImages, setSelectedImages] = useState(data.selectedImages || data.product.images || []);
   const product = data.product;
 
   const toggleImage = (image) => {
@@ -46,7 +46,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
         <div className="space-x-2">
           <button
             onClick={selectAll}
-            className="text-sm text-indigo-600 hover:text-indigo-500"
+            className="text-sm text-primary-600 hover:text-primary-500"
           >
             Select All
           </button>
@@ -68,7 +68,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
               onClick={() => toggleImage(image)}
               className={`
                 relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all
-                ${isSelected ? 'border-indigo-500 shadow-lg' : 'border-gray-200 hover:border-gray-300'}
+                ${isSelected ? 'border-primary-500 shadow-lg' : 'border-gray-200 hover:border-gray-300'}
               `}
             >
               <img
@@ -77,7 +77,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
                 className="w-full h-48 object-cover"
               />
               {isSelected && (
-                <div className="absolute top-2 right-2 bg-indigo-500 rounded-full p-1">
+                <div className="absolute top-2 right-2 bg-primary-500 rounded-full p-1">
                   <CheckIcon className="h-5 w-5 text-white" />
                 </div>
               )}
@@ -108,7 +108,7 @@ const ImageSelector = ({ data, onNext, onBack }) => {
         <button
           onClick={handleContinue}
           disabled={selectedImages.length === 0}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue with {selectedImages.length} Image{selectedImages.length !== 1 ? 's' : ''}
         </button>

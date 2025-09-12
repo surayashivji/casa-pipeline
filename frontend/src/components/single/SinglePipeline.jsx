@@ -51,7 +51,10 @@ const SinglePipeline = () => {
         {/* Enhanced Step Indicators */}
         <div className="relative">
           {/* Progress Line */}
-          <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-200">
+          <div className="absolute top-5 h-0.5 bg-gray-200" style={{ 
+            left: '2.5rem', 
+            right: '2.5rem' 
+          }}>
             <div 
               className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-700 ease-out"
               style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}

@@ -84,7 +84,7 @@
   }
   
   .step-indicator.active {
-    @apply bg-primary-600 text-white shadow-lg shadow-primary-600/30;
+    @apply bg-primary-600 text-white;
   }
   
   .step-indicator.completed {

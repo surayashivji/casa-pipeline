@@ -20,6 +20,14 @@ const ProductReview = ({ data, onNext, onBack }) => {
         <p className="mt-2 text-gray-600">
           Verify the scraped product information before proceeding with image selection
         </p>
+        <a 
+          href={product.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium"
+        >
+          View original product →
+        </a>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -95,61 +103,38 @@ const ProductReview = ({ data, onNext, onBack }) => {
         </div>
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <XMarkIcon className="h-5 w-5 text-yellow-400" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">Data Quality Check</h3>
-            <div className="mt-2 text-sm text-yellow-700">
-              <ul className="list-disc list-inside space-y-1">
-                <li>Product information scraped successfully</li>
-                <li>All required fields present</li>
-                <li>Images are high quality and suitable for 3D generation</li>
-                <li>Dimensions appear accurate</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex items-center space-x-3">
-        <button
-          onClick={() => setIsApproved(!isApproved)}
-          className={`
-            flex items-center space-x-2 px-4 py-2 rounded-md border-2 transition-all
-            ${isApproved 
-              ? 'border-green-500 bg-green-50 text-green-700' 
-              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-            }
-          `}
-        >
-          <CheckIcon className={`h-5 w-5 ${isApproved ? 'text-green-600' : 'text-gray-400'}`} />
-          <span>{isApproved ? 'Approved' : 'Approve Product Data'}</span>
-        </button>
-        
-        {isApproved && (
-          <p className="text-sm text-green-600">
-            ✓ Ready to proceed with background removal
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <button
           onClick={onBack}
           className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
-        <button
-          onClick={handleContinue}
-          disabled={!isApproved}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Continue to Image Selection
-        </button>
+        
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setIsApproved(!isApproved)}
+            className={`
+              flex items-center space-x-2 px-4 py-2 rounded-md border-2 transition-all
+              ${isApproved 
+                ? 'border-green-500 bg-green-50 text-green-700' 
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+              }
+            `}
+          >
+            <CheckIcon className={`h-5 w-5 ${isApproved ? 'text-green-600' : 'text-gray-400'}`} />
+            <span>{isApproved ? 'Approved' : 'Approve Product Data'}</span>
+          </button>
+          
+          <button
+            onClick={handleContinue}
+            disabled={!isApproved}
+            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continue to Image Selection
+          </button>
+        </div>
       </div>
     </div>
   );
