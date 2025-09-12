@@ -27,16 +27,62 @@ from app.websocket_manager import manager
 # Import monitoring
 from app.middleware import metrics_collector
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api",
+    tags=["Room Decorator Pipeline"],
+    responses={
+        404: {"description": "Not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"}
+    }
+)
 
 @router.get("/test")
 async def test_endpoint():
     return {"message": "API routes are working"}
 
-@router.post("/detect-url", response_model=URLDetectionResponse)
+@router.post(
+    "/detect-url", 
+    response_model=URLDetectionResponse,
+    summary="Detect URL Type and Retailer",
+    description="""
+    Analyzes a product URL to determine:
+    - **URL Type**: Product page, category page, or search results
+    - **Retailer**: IKEA, Wayfair, Amazon, etc.
+    - **Confidence**: Detection confidence score (0-1)
+    
+    This is the first step in the pipeline to understand what type of content we're processing.
+    """,
+    responses={
+        200: {
+            "description": "URL successfully analyzed",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "type": "product",
+                        "retailer": "ikea",
+                        "confidence": 0.95,
+                        "url": "https://www.ikea.com/us/en/p/stefan-chair-brown-black-00211088/"
+                    }
+                }
+            }
+        },
+        422: {"description": "Invalid URL format"}
+    },
+    tags=["URL Detection"]
+)
 async def detect_url(request: URLDetectionRequest):
     """
     Detect URL type and retailer for a given product URL
+    
+    **Parameters:**
+    - `url`: The product URL to analyze (required)
+    
+    **Returns:**
+    - `type`: Detected URL type (product, category, search)
+    - `retailer`: Identified retailer name
+    - `confidence`: Detection confidence (0.0-1.0)
+    - `url`: Normalized URL
     """
     try:
         url = request.url.strip()
@@ -175,10 +221,63 @@ def _detect_url_type(url: str) -> dict:
 # SINGLE PRODUCT PIPELINE ENDPOINTS
 # ============================================================================
 
-@router.post("/scrape", response_model=ScrapeResponse)
+@router.post(
+    "/scrape", 
+    response_model=ScrapeResponse,
+    summary="Scrape Product Data",
+    description="""
+    **Step 1 of the Pipeline**: Extract product information from a retailer URL.
+    
+    This endpoint:
+    - Fetches product data (name, price, images, dimensions)
+    - Identifies the retailer and product type
+    - Stores the product in the database
+    - Sends real-time updates via WebSocket
+    
+    **Note**: Currently uses mock data service for development.
+    """,
+    responses={
+        200: {
+            "description": "Product successfully scraped",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "product": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "name": "STEFAN Chair",
+                            "brand": "IKEA",
+                            "price": 99.99,
+                            "url": "https://www.ikea.com/us/en/p/stefan-chair-brown-black-00211088/",
+                            "images": [
+                                "https://www.ikea.com/us/en/images/products/stefan-chair-brown-black__0737165_pe740136_s5.jpg"
+                            ],
+                            "dimensions": {
+                                "width": 20.5,
+                                "height": 33.5,
+                                "depth": 20.5
+                            }
+                        },
+                        "status": "scraped"
+                    }
+                }
+            }
+        },
+        404: {"description": "Product not found"},
+        422: {"description": "Invalid request data"}
+    },
+    tags=["Single Product Pipeline"]
+)
 async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
     """
-    Step 1: Scrape product data from URL using mock data service
+    Scrape product data from URL using mock data service
+    
+    **Parameters:**
+    - `url`: Product URL to scrape (required)
+    - `mode`: Processing mode - "single" or "batch" (optional, default: "single")
+    
+    **Returns:**
+    - `product`: Complete product information
+    - `status`: Processing status
     """
     try:
         # Get mock product data
@@ -682,10 +781,61 @@ async def get_batch_history(limit: int = 20, offset: int = 0, db: Session = Depe
 # MONITORING AND HEALTH ENDPOINTS
 # ============================================================================
 
-@router.get("/health")
+@router.get(
+    "/health",
+    summary="System Health Check",
+    description="""
+    Comprehensive health check endpoint that provides:
+    - **System Status**: Overall API health
+    - **Database Status**: Database connectivity and performance
+    - **WebSocket Status**: Active connection count
+    - **Memory Usage**: Current memory consumption
+    - **Uptime**: System uptime information
+    - **Version**: API version and build info
+    
+    This endpoint is used by monitoring systems and load balancers.
+    """,
+    responses={
+        200: {
+            "description": "System is healthy",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "timestamp": "2024-01-15T10:30:00Z",
+                        "version": "1.0.0",
+                        "uptime": "2d 5h 30m",
+                        "database": {
+                            "status": "connected",
+                            "response_time_ms": 12
+                        },
+                        "websocket": {
+                            "active_connections": 5
+                        },
+                        "memory": {
+                            "used_mb": 128.5,
+                            "total_mb": 512.0
+                        }
+                    }
+                }
+            }
+        },
+        503: {"description": "System is unhealthy"}
+    },
+    tags=["Monitoring & Health"]
+)
 async def health_check():
     """
-    Health check endpoint with detailed status
+    Health check endpoint with detailed system status
+    
+    **Returns:**
+    - `status`: Overall system health (healthy/unhealthy)
+    - `timestamp`: Current timestamp
+    - `version`: API version
+    - `uptime`: System uptime
+    - `database`: Database status and performance
+    - `websocket`: WebSocket connection info
+    - `memory`: Memory usage statistics
     """
     try:
         health_status = metrics_collector.metrics.get_health_status()

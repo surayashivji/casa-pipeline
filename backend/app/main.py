@@ -40,9 +40,61 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="Room Decorator Pipeline API",
-    description="API for processing furniture products into 3D models for iOS room decoration apps",
+    description="""
+    ## 🏠 Room Decorator 3D Pipeline API
+    
+    A comprehensive API for processing furniture and home goods products into 3D models for iOS room decoration applications.
+    
+    ### 🚀 Features
+    - **Product Scraping**: Extract product data from major retailers (IKEA, Wayfair, etc.)
+    - **Image Processing**: AI-powered background removal and image optimization
+    - **3D Model Generation**: Convert 2D images to high-quality 3D models using Meshy API
+    - **Batch Processing**: Handle multiple products simultaneously with real-time progress tracking
+    - **Real-time Updates**: WebSocket support for live progress monitoring
+    - **Comprehensive Monitoring**: Health checks, metrics, and detailed logging
+    
+    ### 🔄 Processing Pipeline
+    1. **URL Detection** → Identify retailer and product type
+    2. **Product Scraping** → Extract product data and images
+    3. **Image Selection** → Choose best images for 3D generation
+    4. **Background Removal** → AI-powered image processing
+    5. **Image Approval** → Manual review and approval interface
+    6. **3D Generation** → Create 3D models from approved images
+    7. **Model Optimization** → Generate multiple LOD levels
+    8. **Product Saving** → Store final 3D models and metadata
+    
+    ### 📊 Monitoring & Health
+    - Real-time API metrics and performance monitoring
+    - Comprehensive error handling and logging
+    - Health check endpoints for system status
+    - WebSocket connections for live updates
+    
+    ### 🔧 Development
+    - **Base URL**: `http://localhost:8000`
+    - **API Documentation**: `/docs` (Swagger UI)
+    - **Alternative Docs**: `/redoc` (ReDoc)
+    - **WebSocket**: `/ws` for real-time updates
+    """,
     version="1.0.0",
-    lifespan=lifespan
+    contact={
+        "name": "Room Decorator Team",
+        "email": "support@roomdecorator.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    lifespan=lifespan,
+    servers=[
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server"
+        },
+        {
+            "url": "https://api.roomdecorator.com",
+            "description": "Production server"
+        }
+    ]
 )
 
 # Setup error handlers
