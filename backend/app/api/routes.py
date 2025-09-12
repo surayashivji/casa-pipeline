@@ -19,8 +19,12 @@ from app.models.product import Product
 from sqlalchemy.orm import Session
 import re
 import uuid
+import asyncio
 from datetime import datetime
 from typing import List, Dict, Any
+
+# Import WebSocket manager
+from app.websocket_manager import manager
 
 router = APIRouter()
 
@@ -185,6 +189,16 @@ async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
         # Create product in database
         product = mock_data.create_mock_product_in_db(request.url, db)
         
+        # Send WebSocket update
+        await manager.send_product_update(str(product.id), {
+            "stage": "scraping",
+            "progress": 100,
+            "message": f"Product scraped successfully: {mock_product['name']}",
+            "status": "completed",
+            "processing_time": 2.5,
+            "cost": 0.05
+        })
+        
         return ScrapeResponse(
             product_id=str(product.id),
             url=request.url,
@@ -233,6 +247,16 @@ async def select_images(request: ImageSelectionRequest, db: Session = Depends(ge
             output_data={"selected_images": len(selected_images)},
             db=db
         )
+        
+        # Send WebSocket update
+        await manager.send_product_update(str(request.product_id), {
+            "stage": "image_selection",
+            "progress": 100,
+            "message": f"Selected {len(selected_images)} images for 3D generation",
+            "status": "completed",
+            "processing_time": 1.2,
+            "cost": 0.0
+        })
         
         return ImageSelectionResponse(
             product_id=str(request.product_id),
@@ -354,6 +378,18 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
             output_data=model_data,
             db=db
         )
+        
+        # Send WebSocket update
+        await manager.send_product_update(str(request.product_id), {
+            "stage": "model_generation",
+            "progress": 100,
+            "message": f"3D model generated successfully (Quality: {model_data['quality_score']:.2f})",
+            "status": "completed",
+            "processing_time": model_data["generation_time"],
+            "cost": 0.50,
+            "model_url": model_data["model_url"],
+            "quality_score": model_data["quality_score"]
+        })
         
         return Generate3DResponse(
             product_id=str(request.product_id),
@@ -532,6 +568,20 @@ async def batch_process(request: BatchProcessRequest, db: Session = Depends(get_
         
         # Note: In real implementation, this would create a processing stage
         # For now, we'll skip database operations for batch processing
+        
+        # Send WebSocket update for batch start
+        await manager.send_batch_update(batch_job['id'], {
+            "stage": "batch_started",
+            "progress": 0,
+            "message": f"Batch processing started for {total_products} products",
+            "status": "processing",
+            "processed": 0,
+            "total": total_products,
+            "successful": 0,
+            "failed": 0,
+            "estimated_time_minutes": total_products * 2.5,
+            "estimated_cost": total_products * 0.75
+        })
         
         return BatchProcessResponse(
             batch_id=batch_job['id'],

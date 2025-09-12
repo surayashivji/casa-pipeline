@@ -4,10 +4,14 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 import os
 import logging
-from typing import List
+import json
+import asyncio
+from typing import List, Dict, Any
+from datetime import datetime
 
-# Import API routes
+# Import API routes and WebSocket manager
 from app.api import routes
+from app.websocket_manager import manager
 
 # Load environment variables
 load_dotenv()
@@ -16,30 +20,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# WebSocket connection manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(message)
-            except:
-                # Remove dead connections
-                self.active_connections.remove(connection)
-
-manager = ConnectionManager()
+# WebSocket manager is now imported from websocket_manager.py
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -88,7 +69,51 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo back the message (in Phase 2, this will be real-time updates)
-            await manager.send_personal_message(f"Echo: {data}", websocket)
+            try:
+                message = json.loads(data)
+                
+                # Handle subscription requests
+                if message.get("type") == "subscribe_product":
+                    product_id = message.get("product_id")
+                    if product_id:
+                        await manager.subscribe_to_product(websocket, product_id)
+                        await manager.send_personal_message(json.dumps({
+                            "type": "subscription_confirmed",
+                            "product_id": product_id,
+                            "message": f"Subscribed to product {product_id}"
+                        }), websocket)
+                
+                elif message.get("type") == "subscribe_batch":
+                    batch_id = message.get("batch_id")
+                    if batch_id:
+                        await manager.subscribe_to_batch(websocket, batch_id)
+                        await manager.send_personal_message(json.dumps({
+                            "type": "subscription_confirmed",
+                            "batch_id": batch_id,
+                            "message": f"Subscribed to batch {batch_id}"
+                        }), websocket)
+                
+                elif message.get("type") == "ping":
+                    await manager.send_personal_message(json.dumps({
+                        "type": "pong",
+                        "timestamp": datetime.now().isoformat()
+                    }), websocket)
+                
+                else:
+                    # Echo back unknown messages
+                    await manager.send_personal_message(json.dumps({
+                        "type": "echo",
+                        "message": f"Received: {data}",
+                        "timestamp": datetime.now().isoformat()
+                    }), websocket)
+                    
+            except json.JSONDecodeError:
+                # Handle non-JSON messages
+                await manager.send_personal_message(json.dumps({
+                    "type": "error",
+                    "message": "Invalid JSON format",
+                    "timestamp": datetime.now().isoformat()
+                }), websocket)
+                
     except WebSocketDisconnect:
         manager.disconnect(websocket)
