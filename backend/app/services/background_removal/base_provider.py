@@ -5,9 +5,17 @@ Abstract base class that all background removal providers must implement
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any
+from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
+
+class ProviderType(Enum):
+    """Available background removal providers"""
+    REMBG = "rembg"
+    REMOVE_BG = "remove_bg"
+    CLIPDROP = "clipdrop"
+    PHOTOROOM = "photoroom"
 
 class BaseProvider(ABC):
     """Abstract base class for background removal providers"""

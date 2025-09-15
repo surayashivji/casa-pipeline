@@ -21,6 +21,10 @@ class BackgroundRemovalManager:
     """Manages background removal operations"""
     
     def __init__(self):
+        # Read provider from environment
+        self.provider_name = os.getenv('BG_REMOVAL_PROVIDER', 'rembg')
+        logger.info(f"Using background removal provider: {self.provider_name}")
+        
         self.providers: List[BaseProvider] = []
         self._initialize_providers()
         self._ensure_directories()
@@ -34,6 +38,9 @@ class BackgroundRemovalManager:
             logger.info(f"Initialized provider: {rembg_provider.provider_name}")
         else:
             logger.warning("REMBG provider not available")
+        
+        # TODO: Add provider selection when Remove.bg implemented
+        # Future providers will be added here based on self.provider_name
     
     def _ensure_directories(self):
         """Ensure required directories exist"""
