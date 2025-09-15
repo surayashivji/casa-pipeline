@@ -78,8 +78,8 @@ export const mockProducts = [
     placement_type: 'floor',
     assembly_required: true,
     images: [
-      'https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836215_pe601418_s5.jpg',
-      'https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836216_pe601417_s5.jpg'
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
     ]
   },
   {
@@ -130,8 +130,8 @@ export const mockProducts = [
     placement_type: 'floor',
     assembly_required: true,
     images: [
-      'https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010901_pe828244_s5.jpg',
-      'https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010902_pe828245_s5.jpg'
+      'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop&crop=center&auto=format&q=80&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
     ]
   }
 ];
