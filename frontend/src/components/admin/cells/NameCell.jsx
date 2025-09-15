@@ -18,9 +18,6 @@ const NameCell = ({ product }) => {
       >
         {product.name || 'N/A'}
       </div>
-      <div className="text-xs text-gray-500 mt-1">
-        {product.ikea_item_number || product.retailer_id || 'No ID'}
-      </div>
     </div>
   );
 };

@@ -143,13 +143,7 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
             </ul>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-            >
-              Process Another
-            </button>
+          <div className="flex justify-end">
             <button
               onClick={handleFinish}
               className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"

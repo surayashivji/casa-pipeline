@@ -16,6 +16,14 @@ const ProductDetailsCell = ({ product }) => {
           </span>
         </div>
 
+        {/* Article Number */}
+        <div className="mb-2">
+          <span className="text-gray-500">Article: </span>
+          <span className="text-gray-900 text-xs">
+            {product.ikea_item_number || product.retailer_id || 'N/A'}
+          </span>
+        </div>
+
         {/* Price */}
         <div className="mb-2">
           <span className="text-gray-500">Price: </span>

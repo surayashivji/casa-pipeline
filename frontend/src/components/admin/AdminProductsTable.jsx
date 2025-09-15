@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getProducts } from '../../shared/services/apiService';
 import IDCell from './cells/IDCell';
 import NameCell from './cells/NameCell';
@@ -21,16 +21,26 @@ const AdminProductsTable = () => {
     category: '',
     status: ''
   });
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
     total: 0
   });
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
   // Fetch products from admin API
   useEffect(() => {
     fetchProducts();
-  }, [filters, pagination.page]);
+  }, [debouncedSearch, filters.brand, filters.category, filters.status, pagination.page]);
 
   const fetchProducts = async () => {
     try {
@@ -40,7 +50,7 @@ const AdminProductsTable = () => {
         limit: pagination.limit,
         include_images: true,
         include_stages: true,
-        ...(filters.search && { search: filters.search }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(filters.brand && { retailer: filters.brand }),
         ...(filters.category && { category: filters.category }),
         ...(filters.status && { status: filters.status })
@@ -100,13 +110,13 @@ const AdminProductsTable = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 px-6 pt-2 pb-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-50 to-primary-100 border-b border-primary-200 px-6 py-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-gradient-to-r from-primary-50 to-primary-100 border-b border-primary-200 px-6 py-8 rounded-t-lg">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-primary-900">Products Database</h1>
-            <p className="text-primary-700 mt-1">Manage and monitor all products in the system</p>
+            <h1 className="text-2xl font-bold text-primary-900">Products Database</h1>
+            <p className="text-primary-700 mt-1 mb-2">{pagination.total} products</p>
           </div>
         </div>
         
@@ -156,7 +166,7 @@ const AdminProductsTable = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white w-full">
+      <div className="bg-white w-full rounded-b-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto w-full">
           <table className="min-w-full">
             <thead className="bg-primary-50 border-b border-primary-200">

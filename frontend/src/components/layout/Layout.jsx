@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CubeIcon, CogIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { CubeIcon, CircleStackIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const Layout = ({ children, showAdminButton = false, onAdminClick, isAdminMode = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,10 +43,10 @@ const Layout = ({ children, showAdminButton = false, onAdminClick, isAdminMode =
                   {isAdminMode ? (
                     <ArrowLeftIcon className="h-5 w-5" />
                   ) : (
-                    <CogIcon className="h-5 w-5" />
+                    <CircleStackIcon className="h-5 w-5" />
                   )}
                   <span className="text-sm font-medium">
-                    {isAdminMode ? 'Back to Processing' : 'Admin Dashboard'}
+                    {isAdminMode ? 'Back to Processing' : 'Casa Database'}
                   </span>
                 </button>
               )}
