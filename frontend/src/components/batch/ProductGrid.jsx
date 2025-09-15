@@ -97,11 +97,11 @@ const ProductGrid = ({ products, onNext, onBack }) => {
                     </div>
 
                     {/* Product Image */}
-                    <div className="flex-shrink-0 w-16 h-16 mr-4">
+                    <div className="flex-shrink-0 w-16 h-16 mr-4 bg-gray-50 rounded flex items-center justify-center overflow-hidden">
                       <img
                         src={product.images[0]}
                         alt={product.name}
-                        className="w-full h-full object-cover rounded"
+                        className="max-w-full max-h-full object-contain"
                       />
                     </div>
 

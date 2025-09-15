@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
 const ImageSelector = ({ data, onNext, onBack }) => {
-  const [selectedImages, setSelectedImages] = useState(data.selectedImages || data.images || []);
+  const [selectedImages, setSelectedImages] = useState(data.selectedImages || (data.images && data.images.length > 0 ? [data.images[0]] : []));
   const product = data.product;
   const images = data.images || [];
 
@@ -72,11 +72,13 @@ const ImageSelector = ({ data, onNext, onBack }) => {
                 ${isSelected ? 'border-primary-500 shadow-lg' : 'border-gray-200 hover:border-gray-300'}
               `}
             >
-              <img
-                src={image}
-                alt={`Product view ${index + 1}`}
-                className="w-full h-48 object-cover"
-              />
+              <div className="w-full h-48 bg-gray-50 flex items-center justify-center overflow-hidden">
+                <img
+                  src={image}
+                  alt={`Product view ${index + 1}`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
               {isSelected && (
                 <div className="absolute top-2 right-2 bg-primary-500 rounded-full p-1">
                   <CheckIcon className="h-5 w-5 text-white" />

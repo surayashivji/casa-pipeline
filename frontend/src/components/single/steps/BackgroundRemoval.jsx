@@ -90,11 +90,13 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Original</p>
-                    <img 
-                      src={result.original}
-                      alt={`Original ${index + 1}`}
-                      className="w-full h-32 object-cover rounded border border-gray-200"
-                    />
+                    <div className="w-full h-32 bg-gray-50 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={result.original}
+                        alt={`Original ${index + 1}`}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Background Removed</p>

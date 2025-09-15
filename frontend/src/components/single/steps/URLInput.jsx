@@ -107,7 +107,7 @@ const URLInput = ({ onNext }) => {
             {isValidating ? (
               <>
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Validating URL...</span>
+                <span>Scraping data...</span>
               </>
             ) : (
               <span>Continue to Product Review</span>

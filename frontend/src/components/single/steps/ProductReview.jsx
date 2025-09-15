@@ -45,7 +45,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
               <img
                 src={images[0]}
                 alt={product.name}
-                className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                className="w-32 h-32 object-contain rounded-lg border border-gray-200 bg-gray-50"
               />
             </div>
           </div>
@@ -87,12 +87,13 @@ const ProductReview = ({ data, onNext, onBack }) => {
         <h4 className="text-sm font-medium text-gray-900 mb-2">Available Images ({images.length})</h4>
         <div className="grid grid-cols-4 gap-2">
           {images.map((image, index) => (
-            <img
-              key={index}
-              src={image}
-              alt={`Product view ${index + 1}`}
-              className="w-full h-20 object-cover rounded border border-gray-200"
-            />
+            <div key={index} className="w-full h-20 bg-gray-50 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+              <img
+                src={image}
+                alt={`Product view ${index + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
           ))}
         </div>
       </div>

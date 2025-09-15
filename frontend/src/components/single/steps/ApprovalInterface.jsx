@@ -49,12 +49,14 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
                 backgroundSize: '20px 20px',
                 backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
               }}></div>
-              <img
-                src={image.original}
-                alt={`Processed ${image.id + 1}`}
-                className="relative w-full h-48 object-cover rounded-md"
-                style={{ opacity: 0.9 }}
-              />
+              <div className="relative w-full h-48 flex items-center justify-center overflow-hidden rounded-md">
+                <img
+                  src={image.original}
+                  alt={`Processed ${image.id + 1}`}
+                  className="max-w-full max-h-full object-contain"
+                  style={{ opacity: 0.9 }}
+                />
+              </div>
             </div>
 
             <div className="mt-4 flex justify-between items-center">

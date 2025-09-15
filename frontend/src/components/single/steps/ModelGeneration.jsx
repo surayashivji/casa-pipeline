@@ -151,11 +151,13 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         <div className="space-y-6">
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="flex items-start space-x-4">
-              <img 
-                src={model3D.modelPreview}
-                alt="3D Model Preview"
-                className="w-48 h-48 object-cover rounded-lg border border-gray-200"
-              />
+              <div className="w-48 h-48 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={model3D.modelPreview}
+                  alt="3D Model Preview"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
               <div className="flex-1 space-y-3">
                 <h3 className="text-lg font-medium text-gray-900">Model Generated Successfully!</h3>
                 <div className="space-y-2 text-sm">
