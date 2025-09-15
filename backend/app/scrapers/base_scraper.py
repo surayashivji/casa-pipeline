@@ -63,8 +63,6 @@ class BaseScraper(ABC):
                 });
             """)
             
-            logger.info(f"Browser initialized for {self.__class__.__name__}")
-            
         except Exception as e:
             logger.error(f"Failed to initialize browser: {e}")
             raise
@@ -78,7 +76,6 @@ class BaseScraper(ABC):
                 await self.browser.close()
             if self.playwright:
                 await self.playwright.stop()
-            logger.info(f"Browser cleaned up for {self.__class__.__name__}")
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
     
@@ -88,7 +85,6 @@ class BaseScraper(ABC):
         time_since_last = current_time - self.last_request_time
         if time_since_last < self.rate_limit_delay:
             wait_time = self.rate_limit_delay - time_since_last
-            logger.debug(f"Rate limiting: waiting {wait_time:.2f}s")
             await asyncio.sleep(wait_time)
         self.last_request_time = time.time()
     
@@ -103,7 +99,6 @@ class BaseScraper(ABC):
                     raise
                 
                 wait_time = (2 ** attempt) * 1.0  # 1s, 2s, 4s
-                logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}, retrying in {wait_time}s: {e}")
                 await asyncio.sleep(wait_time)
     
     @abstractmethod
@@ -135,8 +130,7 @@ class BaseScraper(ABC):
                 text = await element.text_content()
                 return text.strip() if text else default
             return default
-        except Exception as e:
-            logger.debug(f"Failed to extract text from {selector}: {e}")
+        except:
             return default
     
     async def extract_attribute(self, selector: str, attribute: str, default: str = "") -> str:
@@ -147,15 +141,13 @@ class BaseScraper(ABC):
                 value = await element.get_attribute(attribute)
                 return value if value else default
             return default
-        except Exception as e:
-            logger.debug(f"Failed to extract {attribute} from {selector}: {e}")
+        except:
             return default
     
     async def navigate_to_page(self, url: str) -> bool:
         """Navigate to URL with retry logic and rate limiting"""
         async def _navigate():
             await self._respect_rate_limit()
-            logger.info(f"Navigating to: {url}")
             await self.page.goto(url, wait_until='networkidle')
             await self.wait_for_page_load()
             return True
@@ -171,7 +163,6 @@ class BaseScraper(ABC):
         for i in range(scrolls):
             await self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
             await asyncio.sleep(random.uniform(1, 2))
-            logger.debug(f"Scroll {i + 1}/{scrolls} completed")
     
     async def take_screenshot(self, filename: str = None):
         """Take screenshot for debugging purposes"""
@@ -181,9 +172,8 @@ class BaseScraper(ABC):
         
         try:
             await self.page.screenshot(path=filename)
-            logger.info(f"Screenshot saved: {filename}")
-        except Exception as e:
-            logger.error(f"Failed to take screenshot: {e}")
+        except:
+            pass
     
     def get_retailer_name(self) -> str:
         """Get the name of this retailer"""
