@@ -4,7 +4,6 @@ import { removeBackgrounds } from '../../../shared/services/apiService';
 const BackgroundRemoval = ({ data, onNext, onBack }) => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [processedImages, setProcessedImages] = useState([]);
-  const [currentProgress, setCurrentProgress] = useState(0);
   const hasProcessed = useRef(false);
 
   useEffect(() => {
@@ -79,27 +78,14 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
       </div>
 
       {isProcessing ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-600 mb-2">Processing images...</p>
-              <p className="text-sm text-gray-500">
-                This may take a few moments
-              </p>
-            </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600 mb-2">Processing images...</p>
+            <p className="text-sm text-gray-500">
+              This may take a few moments
+            </p>
           </div>
-          
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${currentProgress}%` }}
-            />
-          </div>
-          <p className="text-center text-sm text-gray-600">
-            {Math.round(currentProgress)}% complete
-          </p>
         </div>
       ) : (
         <div className="space-y-6">
