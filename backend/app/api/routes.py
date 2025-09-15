@@ -1060,6 +1060,437 @@ async def get_batch_history(limit: int = 20, offset: int = 0, db: Session = Depe
         raise HTTPException(status_code=500, detail=f"Failed to get batch history: {str(e)}")
 
 # ============================================================================
+# ADMIN ENDPOINTS
+# ============================================================================
+
+@router.get(
+    "/products",
+    summary="Get All Products",
+    description="""
+    **Admin Endpoint**: Retrieve all products from the database with pagination and filtering.
+    
+    **Features**:
+    - Pagination support (limit/offset)
+    - Filter by status, retailer, or date range
+    - Include related images and processing stages
+    - Sort by creation date, name, or price
+    
+    **Use Cases**:
+    - Admin panel product listing
+    - Debugging scraped data
+    - Monitoring pipeline performance
+    """,
+    responses={
+        200: {
+            "description": "Products retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "products": [
+                            {
+                                "id": "550e8400-e29b-41d4-a716-446655440000",
+                                "name": "STOCKHOLM 2025 3-seat sofa",
+                                "brand": "IKEA",
+                                "price": 1899.0,
+                                "status": "scraped",
+                                "created_at": "2024-01-15T10:30:00Z",
+                                "image_count": 5,
+                                "processing_stages": 3
+                            }
+                        ],
+                        "total": 25,
+                        "limit": 20,
+                        "offset": 0
+                    }
+                }
+            }
+        }
+    },
+    tags=["Admin"]
+)
+async def get_products(
+    limit: int = 20,
+    offset: int = 0,
+    status: str = None,
+    retailer: str = None,
+    include_images: bool = False,
+    include_stages: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all products with optional filtering and pagination
+    """
+    try:
+        # Build query
+        query = db.query(Product)
+        
+        # Apply filters
+        if status:
+            query = query.filter(Product.status == status)
+        if retailer:
+            query = query.filter(Product.brand.ilike(f"%{retailer}%"))
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination and ordering
+        products = query.order_by(Product.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Build response
+        product_list = []
+        for product in products:
+            product_data = {
+                "id": str(product.id),
+                "name": product.name,
+                "brand": product.brand,
+                "price": product.price,
+                "url": product.url,
+                "status": product.status,
+                "created_at": product.created_at.isoformat() if product.created_at else None,
+                "updated_at": product.updated_at.isoformat() if product.updated_at else None,
+                "dimensions": {
+                    "width": product.width_inches,
+                    "height": product.height_inches,
+                    "depth": product.depth_inches
+                },
+                "weight_kg": product.weight_kg,
+                "category": product.category,
+                "room_type": product.room_type,
+                "assembly_required": product.assembly_required,
+                "retailer_id": product.retailer_id,
+                "ikea_item_number": product.ikea_item_number
+            }
+            
+            # Include image count
+            image_count = db.query(ProductImage).filter(ProductImage.product_id == product.id).count()
+            product_data["image_count"] = image_count
+            
+            # Include processing stage count
+            stage_count = db.query(ProcessingStage).filter(ProcessingStage.product_id == product.id).count()
+            product_data["processing_stages"] = stage_count
+            
+            # Include actual images if requested
+            if include_images:
+                images = db.query(ProductImage).filter(ProductImage.product_id == product.id).order_by(ProductImage.image_order).all()
+                product_data["images"] = [
+                    {
+                        "id": str(img.id),
+                        "s3_url": img.s3_url,
+                        "image_type": img.image_type,
+                        "image_order": img.image_order,
+                        "is_primary": img.is_primary,
+                        "width_pixels": img.width_pixels,
+                        "height_pixels": img.height_pixels,
+                        "format": img.format
+                    } for img in images
+                ]
+            
+            # Include processing stages if requested
+            if include_stages:
+                stages = db.query(ProcessingStage).filter(ProcessingStage.product_id == product.id).order_by(ProcessingStage.stage_order).all()
+                product_data["stages"] = [
+                    {
+                        "id": str(stage.id),
+                        "stage_name": stage.stage_name,
+                        "stage_order": stage.stage_order,
+                        "status": stage.status,
+                        "started_at": stage.started_at.isoformat() if stage.started_at else None,
+                        "completed_at": stage.completed_at.isoformat() if stage.completed_at else None,
+                        "processing_time_seconds": stage.processing_time_seconds,
+                        "cost_usd": stage.cost_usd,
+                        "error_message": stage.error_message
+                    } for stage in stages
+                ]
+            
+            product_list.append(product_data)
+        
+        return {
+            "products": product_list,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get products: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve products: {str(e)}")
+
+@router.get(
+    "/products/{product_id}",
+    summary="Get Single Product",
+    description="""
+    **Admin Endpoint**: Retrieve a specific product with all related data.
+    
+    **Includes**:
+    - Complete product information
+    - All associated images
+    - All processing stages
+    - Error messages and metadata
+    """,
+    responses={
+        200: {"description": "Product retrieved successfully"},
+        404: {"description": "Product not found"}
+    },
+    tags=["Admin"]
+)
+async def get_product(product_id: str, db: Session = Depends(get_db)):
+    """
+    Get a specific product by ID with all related data
+    """
+    try:
+        # Get product
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Get images
+        images = db.query(ProductImage).filter(ProductImage.product_id == product.id).order_by(ProductImage.image_order).all()
+        
+        # Get processing stages
+        stages = db.query(ProcessingStage).filter(ProcessingStage.product_id == product.id).order_by(ProcessingStage.stage_order).all()
+        
+        # Build response
+        product_data = {
+            "id": str(product.id),
+            "name": product.name,
+            "brand": product.brand,
+            "price": product.price,
+            "url": product.url,
+            "status": product.status,
+            "created_at": product.created_at.isoformat() if product.created_at else None,
+            "updated_at": product.updated_at.isoformat() if product.updated_at else None,
+            "dimensions": {
+                "width": product.width_inches,
+                "height": product.height_inches,
+                "depth": product.depth_inches
+            },
+            "weight_kg": product.weight_kg,
+            "category": product.category,
+            "room_type": product.room_type,
+            "style_tags": product.style_tags,
+            "placement_type": product.placement_type,
+            "assembly_required": product.assembly_required,
+            "retailer_id": product.retailer_id,
+            "ikea_item_number": product.ikea_item_number,
+            "error_message": product.error_message,
+            "images": [
+                {
+                    "id": str(img.id),
+                    "s3_url": img.s3_url,
+                    "image_type": img.image_type,
+                    "image_order": img.image_order,
+                    "is_primary": img.is_primary,
+                    "width_pixels": img.width_pixels,
+                    "height_pixels": img.height_pixels,
+                    "format": img.format,
+                    "file_size_bytes": img.file_size_bytes,
+                    "created_at": img.created_at.isoformat() if img.created_at else None
+                } for img in images
+            ],
+            "processing_stages": [
+                {
+                    "id": str(stage.id),
+                    "stage_name": stage.stage_name,
+                    "stage_order": stage.stage_order,
+                    "status": stage.status,
+                    "started_at": stage.started_at.isoformat() if stage.started_at else None,
+                    "completed_at": stage.completed_at.isoformat() if stage.completed_at else None,
+                    "processing_time_seconds": stage.processing_time_seconds,
+                    "cost_usd": stage.cost_usd,
+                    "input_data": stage.input_data,
+                    "output_data": stage.output_data,
+                    "error_message": stage.error_message,
+                    "stage_metadata": stage.stage_metadata
+                } for stage in stages
+            ]
+        }
+        
+        return product_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get product {product_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve product: {str(e)}")
+
+@router.get(
+    "/images",
+    summary="Get All Images",
+    description="""
+    **Admin Endpoint**: Retrieve all product images with filtering options.
+    
+    **Features**:
+    - Filter by product ID, image type, or date range
+    - Pagination support
+    - Include product information
+    - Sort by creation date or image order
+    """,
+    responses={
+        200: {"description": "Images retrieved successfully"}
+    },
+    tags=["Admin"]
+)
+async def get_images(
+    product_id: str = None,
+    image_type: str = None,
+    limit: int = 50,
+    offset: int = 0,
+    include_product: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all images with optional filtering
+    """
+    try:
+        # Build query
+        query = db.query(ProductImage)
+        
+        # Apply filters
+        if product_id:
+            query = query.filter(ProductImage.product_id == product_id)
+        if image_type:
+            query = query.filter(ProductImage.image_type == image_type)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination and ordering
+        images = query.order_by(ProductImage.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Build response
+        image_list = []
+        for img in images:
+            image_data = {
+                "id": str(img.id),
+                "product_id": str(img.product_id),
+                "s3_url": img.s3_url,
+                "image_type": img.image_type,
+                "image_order": img.image_order,
+                "is_primary": img.is_primary,
+                "width_pixels": img.width_pixels,
+                "height_pixels": img.height_pixels,
+                "format": img.format,
+                "file_size_bytes": img.file_size_bytes,
+                "created_at": img.created_at.isoformat() if img.created_at else None
+            }
+            
+            # Include product information if requested
+            if include_product:
+                product = db.query(Product).filter(Product.id == img.product_id).first()
+                if product:
+                    image_data["product"] = {
+                        "name": product.name,
+                        "brand": product.brand,
+                        "url": product.url
+                    }
+            
+            image_list.append(image_data)
+        
+        return {
+            "images": image_list,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get images: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve images: {str(e)}")
+
+@router.get(
+    "/processing-stages",
+    summary="Get All Processing Stages",
+    description="""
+    **Admin Endpoint**: Retrieve all processing stages with filtering options.
+    
+    **Features**:
+    - Filter by product ID, stage name, or status
+    - Pagination support
+    - Include product information
+    - Sort by creation date or stage order
+    """,
+    responses={
+        200: {"description": "Processing stages retrieved successfully"}
+    },
+    tags=["Admin"]
+)
+async def get_processing_stages(
+    product_id: str = None,
+    stage_name: str = None,
+    status: str = None,
+    limit: int = 50,
+    offset: int = 0,
+    include_product: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all processing stages with optional filtering
+    """
+    try:
+        # Build query
+        query = db.query(ProcessingStage)
+        
+        # Apply filters
+        if product_id:
+            query = query.filter(ProcessingStage.product_id == product_id)
+        if stage_name:
+            query = query.filter(ProcessingStage.stage_name == stage_name)
+        if status:
+            query = query.filter(ProcessingStage.status == status)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination and ordering
+        stages = query.order_by(ProcessingStage.created_at.desc()).offset(offset).limit(limit).all()
+        
+        # Build response
+        stage_list = []
+        for stage in stages:
+            stage_data = {
+                "id": str(stage.id),
+                "product_id": str(stage.product_id),
+                "stage_name": stage.stage_name,
+                "stage_order": stage.stage_order,
+                "status": stage.status,
+                "started_at": stage.started_at.isoformat() if stage.started_at else None,
+                "completed_at": stage.completed_at.isoformat() if stage.completed_at else None,
+                "processing_time_seconds": stage.processing_time_seconds,
+                "cost_usd": stage.cost_usd,
+                "input_data": stage.input_data,
+                "output_data": stage.output_data,
+                "error_message": stage.error_message,
+                "stage_metadata": stage.stage_metadata,
+                "created_at": stage.created_at.isoformat() if stage.created_at else None
+            }
+            
+            # Include product information if requested
+            if include_product:
+                product = db.query(Product).filter(Product.id == stage.product_id).first()
+                if product:
+                    stage_data["product"] = {
+                        "name": product.name,
+                        "brand": product.brand,
+                        "url": product.url
+                    }
+            
+            stage_list.append(stage_data)
+        
+        return {
+            "stages": stage_list,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get processing stages: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve processing stages: {str(e)}")
+
+# ============================================================================
 # MONITORING AND HEALTH ENDPOINTS
 # ============================================================================
 
