@@ -20,7 +20,10 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
       alert('Please approve at least one image');
       return;
     }
-    onNext({ approvedImages: approved });
+    onNext({ 
+      approvedImages: approved,
+      processedImages: data.processedImages // Preserve processedImages for next steps
+    });
   };
 
   const approvedCount = approvedImages.filter(img => img.approved).length;
@@ -30,7 +33,10 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Approve Processed Images</h2>
         <p className="mt-2 text-gray-600">
-          Review and approve the processed images for 3D generation
+          Review and approve the background-removed images for 3D generation
+        </p>
+        <p className="mt-1 text-sm text-gray-500">
+          These images have had their backgrounds removed using AI. Select which ones to use for 3D model generation.
         </p>
       </div>
 
@@ -51,7 +57,7 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
               }}></div>
               <div className="relative w-full h-48 flex items-center justify-center overflow-hidden rounded-md">
                 <img
-                  src={image.original}
+                  src={image.processed}
                   alt={`Processed ${image.id + 1}`}
                   className="max-w-full max-h-full object-contain"
                   style={{ opacity: 0.9 }}
@@ -61,8 +67,16 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
 
             <div className="mt-4 flex justify-between items-center">
               <div className="text-sm">
-                <p className="font-medium text-gray-700">Image {image.id + 1}</p>
-                <p className="text-gray-500">Ready for 3D generation</p>
+                <p className="font-medium text-gray-700">Processed Image {image.id + 1}</p>
+                <p className="text-gray-500">Background removed - Ready for 3D generation</p>
+                {image.qualityScore && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Quality: {(image.qualityScore * 100).toFixed(0)}%
+                    {image.autoApproved && (
+                      <span className="ml-2 text-green-600 font-medium">✓ Auto-approved</span>
+                    )}
+                  </p>
+                )}
               </div>
               
               <button

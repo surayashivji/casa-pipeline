@@ -16,19 +16,68 @@ from app.schemas.processing import (
 from app.services.mock_data import mock_data, MockDataService
 from app.services.background_removal.manager import BackgroundRemovalManager
 from app.core.database import get_db
-from app.models import Product, ProductImage, ProcessingStage
+from app.models import Product, ProductImage, ProcessingStage, Model3D, ModelLOD
 from app.scrapers.scraper_factory import ScraperFactory
 from sqlalchemy.orm import Session
 import re
 import uuid
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any# Import WebSocket manager
 from app.websocket_manager import manager
 
 # Import monitoring
 from app.middleware import metrics_collector
+
+def cleanup_product_files(db: Session, product_id: str) -> int:
+    """
+    Clean up local files associated with a product.
+    Returns the number of files deleted.
+    """
+    deleted_count = 0
+    
+    try:
+        # Get all images for this product
+        images = db.query(ProductImage).filter(ProductImage.product_id == product_id).all()
+        
+        for image in images:
+            if image.local_path and os.path.exists(image.local_path):
+                try:
+                    os.remove(image.local_path)
+                    deleted_count += 1
+                    logger.info(f"Deleted local file: {image.local_path}")
+                except Exception as e:
+                    logger.warning(f"Could not delete {image.local_path}: {e}")
+        
+        # Get all 3D models for this product
+        models = db.query(Model3D).filter(Model3D.product_id == product_id).all()
+        
+        for model in models:
+            if model.file_path and os.path.exists(model.file_path):
+                try:
+                    os.remove(model.file_path)
+                    deleted_count += 1
+                    logger.info(f"Deleted 3D model file: {model.file_path}")
+                except Exception as e:
+                    logger.warning(f"Could not delete {model.file_path}: {e}")
+            
+            # Also clean up LOD files
+            for lod in model.lods:
+                if lod.file_path and os.path.exists(lod.file_path):
+                    try:
+                        os.remove(lod.file_path)
+                        deleted_count += 1
+                        logger.info(f"Deleted LOD file: {lod.file_path}")
+                    except Exception as e:
+                        logger.warning(f"Could not delete {lod.file_path}: {e}")
+        
+        return deleted_count
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up files for product {product_id}: {e}")
+        return deleted_count
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -671,6 +720,36 @@ async def remove_backgrounds(request: BackgroundRemovalRequest, db: Session = De
             "status": "processing"
         })
         
+        # Check if processed images already exist for this product
+        existing_processed = db.query(ProductImage).filter(
+            ProductImage.product_id == request.product_id,
+            ProductImage.image_type == 'processed'
+        ).all()
+        
+        if existing_processed:
+            logger.warning(f"Processed images already exist for product {request.product_id}, returning existing results")
+            # Return existing processed images
+            existing_results = []
+            for img in existing_processed:
+                # Construct the full URL for the processed image
+                processed_url = f"http://localhost:8000{img.local_path}" if img.local_path else img.s3_url
+                existing_results.append({
+                    "original_url": img.s3_url,  # This is the original URL
+                    "processed_url": processed_url,  # This is the processed image URL
+                    "quality_score": getattr(img, 'quality_score', 0.85),
+                    "processing_time": 0,
+                    "auto_approved": True,
+                    "provider": "rembg"
+                })
+            
+            return BackgroundRemovalResponse(
+                product_id=request.product_id,
+                processed_images=existing_results,
+                total_processing_time=0.0,
+                total_cost=0.0,
+                success_rate=1.0
+            )
+        
         # Get original images from database
         original_images = db.query(ProductImage).filter(
             ProductImage.product_id == request.product_id,
@@ -693,6 +772,11 @@ async def remove_backgrounds(request: BackgroundRemovalRequest, db: Session = De
                 )
                 
                 if result.get('success'):
+                    # Get actual file size from local file
+                    file_size = 0
+                    if result.get('local_path') and os.path.exists(result['local_path']):
+                        file_size = os.path.getsize(result['local_path'])
+                    
                     # Create new ProductImage record for processed image
                     processed_image = ProductImage(
                         product_id=request.product_id,
@@ -700,7 +784,7 @@ async def remove_backgrounds(request: BackgroundRemovalRequest, db: Session = De
                         image_order=i,
                         s3_url=result.get('processed_url', image_url),  # Use processed URL
                         local_path=result.get('local_path'),
-                        file_size_bytes=len(result.get('image_data', b'')),
+                        file_size_bytes=file_size,
                         width_pixels=1400,  # REMBG outputs 1400x1400
                         height_pixels=1400,
                         format='PNG',
@@ -1682,6 +1766,69 @@ async def health_check():
             "timestamp": datetime.now().isoformat(),
             "error": str(e)
         }
+
+@router.delete("/products/{product_id}")
+async def delete_product(product_id: str, db: Session = Depends(get_db)):
+    """Delete a product and clean up all associated files"""
+    try:
+        # Check if product exists
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Clean up local files first
+        deleted_files = cleanup_product_files(db, product_id)
+        
+        # Delete processing stages
+        stages_deleted = db.query(ProcessingStage).filter(
+            ProcessingStage.product_id == product_id
+        ).delete(synchronize_session=False)
+        
+        # Delete product images
+        images_deleted = db.query(ProductImage).filter(
+            ProductImage.product_id == product_id
+        ).delete(synchronize_session=False)
+        
+        # Delete 3D models and LODs
+        models = db.query(Model3D).filter(Model3D.product_id == product_id).all()
+        model_ids = [m.id for m in models]
+        
+        if model_ids:
+            # Delete LODs first
+            lods_deleted = db.query(ModelLOD).filter(
+                ModelLOD.model_id.in_(model_ids)
+            ).delete(synchronize_session=False)
+            
+            # Delete 3D models
+            models_deleted = db.query(Model3D).filter(
+                Model3D.product_id == product_id
+            ).delete(synchronize_session=False)
+        else:
+            lods_deleted = 0
+            models_deleted = 0
+        
+        # Finally, delete the product
+        product_deleted = db.query(Product).filter(Product.id == product_id).delete(synchronize_session=False)
+        
+        # Commit all changes
+        db.commit()
+        
+        return {
+            "message": "Product deleted successfully",
+            "product_id": product_id,
+            "deleted_files": deleted_files,
+            "deleted_stages": stages_deleted,
+            "deleted_images": images_deleted,
+            "deleted_models": models_deleted,
+            "deleted_lods": lods_deleted
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting product {product_id}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/metrics")
 async def get_metrics():

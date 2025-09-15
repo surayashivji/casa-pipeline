@@ -9,6 +9,15 @@ const Model3DCell = ({ product }) => {
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
   
+  // Helper function to construct full URL
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('/static/')) {
+      return `http://localhost:8000${imageUrl}`;
+    }
+    return imageUrl;
+  };
+  
   return (
     <div className="w-48 p-4">
       <div className="text-xs font-medium text-gray-700 mb-2">
@@ -21,7 +30,7 @@ const Model3DCell = ({ product }) => {
           <div className="w-32 h-32 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
             {primaryModel.preview_url ? (
               <img 
-                src={primaryModel.preview_url} 
+                src={getImageUrl(primaryModel.preview_url)} 
                 alt="3D Model Preview"
                 className="max-w-full max-h-full object-contain"
                 onError={(e) => {

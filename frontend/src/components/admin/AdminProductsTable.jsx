@@ -10,6 +10,8 @@ import ProcessedImagesCell from './cells/ProcessedImagesCell';
 import Model3DCell from './cells/Model3DCell';
 import StatusProgressCell from './cells/StatusProgressCell';
 import PriceCell from './cells/PriceCell';
+import ActionsCell from './cells/ActionsCell';
+import { deleteProduct } from '../../shared/services/apiService';
 
 const AdminProductsTable = () => {
   const [products, setProducts] = useState([]);
@@ -79,6 +81,25 @@ const AdminProductsTable = () => {
 
   const handlePageChange = (newPage) => {
     setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleProductDelete = async (productId, response) => {
+    try {
+      await deleteProduct(productId);
+      
+      // Remove the product from the local state
+      setProducts(prev => prev.filter(p => p.id !== productId));
+      
+      // Show success message
+      console.log(`Product ${productId} deleted successfully:`, response);
+      
+      // Optionally show a toast notification
+      // You could add a toast notification system here
+      
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      // Optionally show an error toast
+    }
   };
 
   if (loading) {
@@ -195,6 +216,9 @@ const AdminProductsTable = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-48">
                   Details
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-32">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -229,6 +253,9 @@ const AdminProductsTable = () => {
                   </td>
                   <td className="px-0 py-0">
                     <ProductDetailsCell product={product} />
+                  </td>
+                  <td className="px-0 py-0">
+                    <ActionsCell product={product} onDelete={handleProductDelete} />
                   </td>
                 </tr>
                 );

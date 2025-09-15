@@ -1,6 +1,15 @@
 const ProcessedImagesCell = ({ product }) => {
   const processedImages = Array.isArray(product?.images) ? product.images.filter(img => img?.image_type === 'processed') : [];
   
+  // Helper function to construct full URL
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('/static/')) {
+      return `http://localhost:8000${imageUrl}`;
+    }
+    return imageUrl;
+  };
+  
   return (
     <div className="w-64 p-4">
       <div className="text-xs font-medium text-gray-700 mb-2">
@@ -12,7 +21,7 @@ const ProcessedImagesCell = ({ product }) => {
           {processedImages.slice(0, 4).map((image, index) => (
             <div key={index} className="w-24 h-24 bg-checkered rounded border border-gray-200 flex items-center justify-center overflow-hidden">
               <img 
-                src={image.s3_url} 
+                src={getImageUrl(image.s3_url)} 
                 alt={`Processed ${index + 1}`}
                 className="max-w-full max-h-full object-contain"
                 onError={(e) => {

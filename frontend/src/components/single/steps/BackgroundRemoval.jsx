@@ -1,25 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { removeBackgrounds } from '../../../shared/services/apiService';
 
 const BackgroundRemoval = ({ data, onNext, onBack }) => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [processedImages, setProcessedImages] = useState([]);
   const [currentProgress, setCurrentProgress] = useState(0);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Check if we have valid data
+    if (!data.product?.id || !data.selectedImages || data.selectedImages.length === 0) {
+      return;
+    }
+    
+    // Prevent duplicate processing
+    if (hasProcessed.current) {
+      return;
+    }
+    
     const processImages = async () => {
       try {
+        hasProcessed.current = true;
+        
         const apiResponse = await removeBackgrounds(
           data.product.id,
           data.selectedImages // image URLs
         );
         
         // Adapt API response to component format
-        const results = apiResponse.processed_images.map((img, index) => ({
-          original: data.selectedImages[index],
-          processed: img.processed_url || `https://example.com/processed-${index}.jpg`,
-          mask: img.mask_url || `https://example.com/mask-${index}.png`
-        }));
+        const results = apiResponse.processed_images.map((img, index) => {
+          // Construct full URL for processed image
+          let processedUrl = img.processed_url;
+          if (processedUrl && processedUrl.startsWith('/static/')) {
+            processedUrl = `http://localhost:8000${processedUrl}`;
+          }
+          
+          return {
+            original: data.selectedImages[index],
+            processed: processedUrl || `https://example.com/processed-${index}.jpg`,
+            mask: img.mask_url || `https://example.com/mask-${index}.png`,
+            qualityScore: img.quality_score,
+            autoApproved: img.auto_approved
+          };
+        });
         
         setProcessedImages(results);
         setIsProcessing(false);
@@ -30,7 +53,7 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
     };
 
     processImages();
-  }, [data.selectedImages]);
+  }, [data.product?.id]); // Only depend on product ID, not selectedImages
 
   const handleContinue = () => {
     onNext({ 
@@ -107,6 +130,14 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
                         className="max-w-full max-h-full object-contain"
                       />
                     </div>
+                    {result.qualityScore && (
+                      <div className="mt-1 text-xs text-gray-600">
+                        Quality: {(result.qualityScore * 100).toFixed(0)}%
+                        {result.autoApproved && (
+                          <span className="ml-2 text-green-600 font-medium">✓ Auto-approved</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

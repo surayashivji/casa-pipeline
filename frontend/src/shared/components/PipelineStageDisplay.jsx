@@ -83,7 +83,27 @@ const PipelineStageDisplay = ({ stage, stageData, compact = false }) => {
           )}
 
           {/* Processed Image Display (with checkered background) */}
-          {config.displayType === 'processedImage' && stageData.data.processedImage && (
+          {config.displayType === 'processedImage' && stageData.data.processedImages && (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                {stageData.data.processedImages.length} processed image{stageData.data.processedImages.length !== 1 ? 's' : ''}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {stageData.data.processedImages.map((image, index) => (
+                  <div key={index} className="w-full h-32 bg-checkered rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={image.processed} 
+                      alt={`${config.title} ${index + 1}`}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Fallback for single processed image */}
+          {config.displayType === 'processedImage' && stageData.data.processedImage && !stageData.data.processedImages && (
             <div className="w-full h-48 bg-checkered rounded border border-gray-200 flex items-center justify-center">
               <img 
                 src={stageData.data.processedImage} 

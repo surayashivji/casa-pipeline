@@ -153,6 +153,10 @@ export const getProduct = async (productId) => {
   return apiClient.get(`/products/${productId}`);
 };
 
+export const deleteProduct = async (productId) => {
+  return apiClient.request(`/products/${productId}`, { method: 'DELETE' });
+};
+
 export const getImages = async (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
   return apiClient.get(`/images${queryString ? `?${queryString}` : ''}`);
@@ -306,6 +310,7 @@ export default {
   // Admin
   getProducts,
   getProduct,
+  deleteProduct,
   getImages,
   getProcessingStages,
   

@@ -56,6 +56,7 @@ const ModelViewer = ({ data, onNext, onBack }) => {
   const handleContinue = () => {
     onNext({ 
       optimizedModel,
+      processedImages: data.processedImages, // Preserve processedImages for next steps
       optimization: {
         status: 'complete',
         data: optimizedModel

@@ -18,7 +18,7 @@ const SinglePipeline = () => {
     { name: 'Product Review', component: ProductReview },
     { name: 'Image Selection', component: ImageSelector },
     { name: 'Background Removal', component: BackgroundRemoval },
-    { name: 'Image Approval', component: ApprovalInterface },
+    { name: 'Select Images for 3D Model', component: ApprovalInterface },
     { name: '3D Generation', component: ModelGeneration },
     { name: 'Model Viewer', component: ModelViewer },
     { name: 'Save Confirmation', component: SaveConfirmation }
@@ -102,6 +102,7 @@ const SinglePipeline = () => {
           isLastStep={currentStep === steps.length - 1}
         />
       </div>
+
 
     </div>
   );
