@@ -15,7 +15,7 @@ from app.schemas.processing import (
 )
 from app.services.mock_data import mock_data, MockDataService
 from app.core.database import get_db
-from app.models.product import Product
+from app.models import Product, ProductImage, ProcessingStage
 from app.scrapers.scraper_factory import ScraperFactory
 from sqlalchemy.orm import Session
 import re
@@ -492,10 +492,45 @@ def _create_product_in_db(scraped_data: dict, url: str, db: Session) -> Product:
         )
         
         db.add(product)
+        db.flush()  # Get the ID without committing yet
+        
+        # Save images to product_images table
+        images = scraped_data.get('images', [])
+        logger.info(f"Saving {len(images)} images to database for product {product.id}")
+        
+        for i, image_url in enumerate(images):
+            img = ProductImage(
+                product_id=product.id,
+                image_type="original",
+                image_order=i,
+                s3_url=image_url,
+                width_pixels=1024,  # Default, could be extracted from image
+                height_pixels=1024,  # Default, could be extracted from image
+                format="jpg",
+                is_primary=(i == 0)
+            )
+            db.add(img)
+        
+        # Create initial processing stage
+        stage = ProcessingStage(
+            product_id=product.id,
+            stage_name="scraping",
+            stage_order=1,
+            status="completed",
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
+            processing_time_seconds=2.5,
+            cost_usd=0.05,
+            input_data={"url": url},
+            output_data={"images_found": len(images)},
+            stage_metadata={"retailer": scraped_data.get('retailer', 'unknown')}
+        )
+        db.add(stage)
+        
         db.commit()
         db.refresh(product)
         
-        logger.info(f"Created product in database: {product.id}")
+        logger.info(f"Created product in database: {product.id} with {len(images)} images")
         return product
         
     except Exception as e:
