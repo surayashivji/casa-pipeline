@@ -95,11 +95,11 @@ const PipelineStageDisplay = ({ stage, stageData, compact = false }) => {
 
           {/* Model Preview Display */}
           {config.displayType === 'modelPreview' && stageData.data.modelPreview && (
-            <div className="relative w-full h-48 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+            <div className="relative">
               <img 
                 src={stageData.data.modelPreview} 
                 alt={config.title}
-                className="max-w-full max-h-full object-contain"
+                className="w-full h-48 object-cover rounded border border-gray-200 bg-gray-100"
               />
               <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                 3D Preview

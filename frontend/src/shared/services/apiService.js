@@ -143,6 +143,26 @@ export const getBatchHistory = async () => {
   return apiClient.get('/batch-history');
 };
 
+// Admin Endpoints
+export const getProducts = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return apiClient.get(`/products${queryString ? `?${queryString}` : ''}`);
+};
+
+export const getProduct = async (productId) => {
+  return apiClient.get(`/products/${productId}`);
+};
+
+export const getImages = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return apiClient.get(`/images${queryString ? `?${queryString}` : ''}`);
+};
+
+export const getProcessingStages = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  return apiClient.get(`/processing-stages${queryString ? `?${queryString}` : ''}`);
+};
+
 // Monitoring and Health
 export const getHealthStatus = async () => {
   return apiClient.get('/health');
@@ -282,6 +302,12 @@ export default {
   getBatchStatus,
   cancelBatch,
   getBatchHistory,
+  
+  // Admin
+  getProducts,
+  getProduct,
+  getImages,
+  getProcessingStages,
   
   // Monitoring
   getHealthStatus,
