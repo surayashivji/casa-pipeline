@@ -1,0 +1,34 @@
+{
+  "url": "https://www.ikea.com/us/en/p/stockholm-2025-3-seat-sofa-alhamn-beige-s69574294/#content",
+  "retailer": "ikea",
+  "retailer_id": "",
+  "name": "STOCKHOLM 2025 3-seat sofa, Alhamn beige",
+  "brand": "IKEA",
+  "price": 1899.0,
+  "currency": "USD",
+  "images": [
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1362835_pe955331_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1431796_ph203017_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1432207_ph203018_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1397567_pe967637_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-dark-brown__1362836_pe955332_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-dark-turquoise__1425424_pe979531_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-djurmo-gray-white__1362838_pe955334_s5.jpg?f=xl"
+  ],
+  "description": "",
+  "dimensions": {
+    "width": 95.625,
+    "height": 27.5,
+    "depth": 39.0,
+    "unit": "inches"
+  },
+  "weight": 43.998424,
+  "category": "Three-seat sofas",
+  "room_type": "living",
+  "style_tags": [
+    "contemporary"
+  ],
+  "assembly_required": true,
+  "ikea_item_number": "695.742.94",
+  "variants": []
+}

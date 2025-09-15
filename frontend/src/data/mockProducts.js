@@ -21,7 +21,6 @@ export const mockProducts = [
     style_tags: ['modern', 'scandinavian', 'minimal'],
     placement_type: 'floor',
     assembly_required: true,
-    in_stock: true,
     images: [
       'https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818567_pe774489_s5.jpg',
       'https://www.ikea.com/us/en/images/products/ektorp-sofa-lofallet-beige__0818568_pe774490_s5.jpg',
@@ -51,7 +50,6 @@ export const mockProducts = [
     style_tags: ['modern', 'scandinavian'],
     placement_type: 'floor',
     assembly_required: true,
-    in_stock: true,
     images: [
       'https://www.ikea.com/us/en/images/products/poaeng-armchair-birch-veneer-knisa-light-beige__0497130_pe628957_s5.jpg',
       'https://www.ikea.com/us/en/images/products/poaeng-armchair-birch-veneer-knisa-light-beige__0497131_pe628958_s5.jpg',
@@ -79,7 +77,6 @@ export const mockProducts = [
     style_tags: ['minimal', 'modern'],
     placement_type: 'floor',
     assembly_required: true,
-    in_stock: true,
     images: [
       'https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836215_pe601418_s5.jpg',
       'https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836216_pe601417_s5.jpg'
@@ -106,7 +103,6 @@ export const mockProducts = [
     style_tags: ['minimal', 'scandinavian'],
     placement_type: 'floor',
     assembly_required: true,
-    in_stock: true,
     images: [
       'https://www.ikea.com/us/en/images/products/billy-bookcase-white__0625599_pe692385_s5.jpg',
       'https://www.ikea.com/us/en/images/products/billy-bookcase-white__0644785_pe702937_s5.jpg'
@@ -133,7 +129,6 @@ export const mockProducts = [
     style_tags: ['modern', 'ergonomic'],
     placement_type: 'floor',
     assembly_required: true,
-    in_stock: false,
     images: [
       'https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010901_pe828244_s5.jpg',
       'https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010902_pe828245_s5.jpg'

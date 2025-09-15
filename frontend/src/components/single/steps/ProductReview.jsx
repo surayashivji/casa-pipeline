@@ -39,13 +39,6 @@ const ProductReview = ({ data, onNext, onBack }) => {
               <p className="mt-1 text-gray-600">{product.description}</p>
               <div className="mt-2 flex items-center space-x-4">
                 <span className="text-2xl font-bold text-gray-900">${product.price}</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  product.in_stock 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {product.in_stock ? 'In Stock' : 'Out of Stock'}
-                </span>
               </div>
             </div>
             <div className="ml-6">

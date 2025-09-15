@@ -318,7 +318,6 @@ async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
             style_tags=mock_product['style_tags'],
             placement_type=mock_product['placement_type'],
             assembly_required=mock_product['assembly_required'],
-            in_stock=mock_product['in_stock'],
             retailer_id=mock_product['retailer_id'],
             ikea_item_number=mock_product.get('ikea_item_number'),
             status="scraped",

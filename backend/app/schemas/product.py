@@ -24,7 +24,6 @@ class ProductBase(BaseModel):
     ikea_product_type: Optional[str] = None
     assembly_required: Optional[bool] = None
     package_count: Optional[int] = None
-    in_stock: Optional[bool] = True
     popularity_score: Optional[int] = None
     processing_mode: Optional[str] = None
     status: Optional[str] = "scraped"

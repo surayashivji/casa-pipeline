@@ -48,7 +48,6 @@ MOCK_PRODUCTS_DATA = [
         "style_tags": ["modern", "scandinavian", "minimal"],
         "placement_type": "floor",
         "assembly_required": True,
-        "in_stock": True,
         "images": [
             generate_placeholder_image(400, 300, "EKTORP 1", "#8b7355", "#ffffff"),
             generate_placeholder_image(400, 300, "EKTORP 2", "#8b7355", "#ffffff"),
@@ -78,7 +77,6 @@ MOCK_PRODUCTS_DATA = [
         "style_tags": ["modern", "scandinavian"],
         "placement_type": "floor",
         "assembly_required": True,
-        "in_stock": True,
         "images": [
             "https://www.ikea.com/us/en/images/products/poaeng-armchair-birch-veneer-knisa-light-beige__0497130_pe628957_s5.jpg",
             "https://www.ikea.com/us/en/images/products/poaeng-armchair-birch-veneer-knisa-light-beige__0497131_pe628958_s5.jpg",
@@ -106,7 +104,6 @@ MOCK_PRODUCTS_DATA = [
         "style_tags": ["minimal", "modern"],
         "placement_type": "floor",
         "assembly_required": True,
-        "in_stock": True,
         "images": [
             "https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836215_pe601418_s5.jpg",
             "https://www.ikea.com/us/en/images/products/lack-coffee-table-black-brown__0836216_pe601417_s5.jpg"
@@ -133,7 +130,6 @@ MOCK_PRODUCTS_DATA = [
         "style_tags": ["minimal", "scandinavian"],
         "placement_type": "floor",
         "assembly_required": True,
-        "in_stock": True,
         "images": [
             "https://www.ikea.com/us/en/images/products/billy-bookcase-white__0625599_pe692385_s5.jpg",
             "https://www.ikea.com/us/en/images/products/billy-bookcase-white__0644785_pe702937_s5.jpg"
@@ -160,7 +156,6 @@ MOCK_PRODUCTS_DATA = [
         "style_tags": ["modern", "ergonomic"],
         "placement_type": "floor",
         "assembly_required": True,
-        "in_stock": False,
         "images": [
             "https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010901_pe828244_s5.jpg",
             "https://www.ikea.com/us/en/images/products/flintan-office-chair-vissle-gray__1010902_pe828245_s5.jpg"
@@ -223,7 +218,6 @@ class MockDataService:
             retailer_id=mock_data['retailer_id'],
             ikea_item_number=mock_data['ikea_item_number'],
             assembly_required=mock_data['assembly_required'],
-            in_stock=mock_data['in_stock'],
             status="scraped",
             processing_mode="single"
         )
@@ -293,7 +287,6 @@ class MockDataService:
             "style_tags": random.choice(styles),
             "placement_type": "floor",
             "assembly_required": random.choice([True, False]),
-            "in_stock": random.choice([True, False]),
             "images": [
                 generate_placeholder_image(400, 300, f"Product {i}", "#8b7355", "#ffffff")
                 for i in range(1, random.randint(3, 6))

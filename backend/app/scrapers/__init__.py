@@ -3,12 +3,14 @@
 
 from .base_scraper import BaseScraper
 from .url_detector import URLDetector
+from .ikea_scraper import IKEAScraper
 
 # ScraperFactory will be imported when we create it in Step 5
 # from .scraper_factory import ScraperFactory
 
 __all__ = [
     'BaseScraper',
-    'URLDetector'
+    'URLDetector',
+    'IKEAScraper'
     # 'ScraperFactory'  # Will be added in Step 5
 ]

@@ -1,0 +1,40 @@
+{
+  "url": "https://www.ikea.com/us/en/p/dyvlinge-swivel-chair-kelinge-orange-40581921/",
+  "retailer": "ikea",
+  "retailer_id": "40581921",
+  "name": "DYVLINGE Swivel chair, Kelinge orange",
+  "description": "MILA swivel easy chair was presented as the \"anti-stress armchair\" in our 1967 catalogue. A big success designed by Gillis Lundgren \u2013 now given new life with the name DYVLINGE in the Nytillverkad collection.",
+  "brand": "IKEA",
+  "price": 199,
+  "currency": "USD",
+  "images": [
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1322501_pe942192_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1392283_ph201010_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1392284_ph201008_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1392285_ph201009_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1322500_pe942194_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1322496_pe942190_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1322497_pe942191_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1322499_pe942193_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-orange__1247409_pe922666_s5.jpg?f=xl",
+    "https://www.ikea.com/us/en/images/products/dyvlinge-swivel-chair-kelinge-black__1205899_pe907271_s5.jpg?f=xl"
+  ],
+  "dimensions": {
+    "width": 24.75,
+    "height": 26.75,
+    "depth": 29.5,
+    "unit": "inches"
+  },
+  "weight": 12.246984,
+  "category": "Furniture",
+  "room_type": "living",
+  "style_tags": [],
+  "assembly_required": false,
+  "ikea_item_number": "",
+  "variants": [
+    {
+      "name": "Choose coverKelinge orange",
+      "available": true
+    }
+  ]
+}
