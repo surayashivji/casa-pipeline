@@ -90,10 +90,10 @@ class RembgProvider(BaseProvider):
                 "success": True,
                 "image_data": result["image_data"],
                 "format": result["format"],
-                "cost": self.cost_per_image,
-                "processing_time": processing_time,
-                "quality_score": result["quality_score"],
-                "transparency_ratio": result["transparency_ratio"]
+                "cost": float(self.cost_per_image),
+                "processing_time": float(processing_time),
+                "quality_score": float(result["quality_score"]),
+                "transparency_ratio": float(result["transparency_ratio"])
             }
             
         except Exception as e:
@@ -106,7 +106,7 @@ class RembgProvider(BaseProvider):
                 "image_data": image_data,
                 "format": "original",
                 "cost": 0.0,
-                "processing_time": processing_time,
+                "processing_time": float(processing_time),
                 "quality_score": 0.0
             }
     

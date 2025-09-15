@@ -1,0 +1,22 @@
+{
+  "product_id": "cb410a71-c1bb-43bb-bce1-30018646669e",
+  "processed_images": [
+    {
+      "original_url": "data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjOGI3MzU1Ii8+CiAgICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNmZmZmZmYiPgogICAgICAgIEVLVE9SUCAxCiAgICAgIDwvdGV4dD4KICAgIDwvc3ZnPgogICAg",
+      "processed_url": null,
+      "error": "Failed to download image",
+      "processing_time": 0,
+      "quality_score": 0
+    },
+    {
+      "original_url": "data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjOGI3MzU1Ii8+CiAgICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiNmZmZmZmYiPgogICAgICAgIEVLVE9SUCAyCiAgICAgIDwvdGV4dD4KICAgIDwvc3ZnPgogICAg",
+      "processed_url": null,
+      "error": "Failed to download image",
+      "processing_time": 0,
+      "quality_score": 0
+    }
+  ],
+  "total_processing_time": 0.0,
+  "total_cost": 0.0,
+  "success_rate": 0.0
+}

@@ -12,7 +12,7 @@ const Model3DCell = ({ product }) => {
   return (
     <div className="w-48 p-4">
       <div className="text-xs font-medium text-gray-700 mb-2">
-        3D Models ({models.length})
+        3D Model
       </div>
       
       {primaryModel ? (
