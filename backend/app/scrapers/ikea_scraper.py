@@ -25,6 +25,9 @@ class IKEAScraper(BaseScraper):
             # Navigate to product page
             await self.navigate_to_page(url)
             
+            # Extract ALL data while browser is still open
+            logger.info("Extracting all product data...")
+            
             # Extract basic product data first
             product_data = {
                 'url': url,
@@ -37,7 +40,7 @@ class IKEAScraper(BaseScraper):
                 'images': await self._extract_images(),
             }
             
-            # Extract description after other basic data
+            # Extract description
             logger.info("Extracting description...")
             # Try to expand product details section first (like we do for measurements)
             await self.page.evaluate('''
@@ -72,14 +75,11 @@ class IKEAScraper(BaseScraper):
             await asyncio.sleep(2)
             product_data['description'] = await self._extract_description()
             
-            # Extract remaining data while page is still open
-            logger.info("Extracting remaining product data...")
-            
-            # Extract dimensions first (most important)
+            # Extract dimensions (most important)
             logger.info("Extracting dimensions...")
             product_data['dimensions'] = await self._extract_dimensions()
             
-            # Extract other data
+            # Extract remaining data
             product_data.update({
                 'weight': await self._extract_weight(),
                 'category': await self._extract_category(),

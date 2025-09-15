@@ -16,16 +16,21 @@ from app.schemas.processing import (
 from app.services.mock_data import mock_data, MockDataService
 from app.core.database import get_db
 from app.models.product import Product
+from app.scrapers.scraper_factory import ScraperFactory
 from sqlalchemy.orm import Session
 import re
 import uuid
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any# Import WebSocket manager
 from app.websocket_manager import manager
 
 # Import monitoring
 from app.middleware import metrics_collector
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     tags=["Room Decorator Pipeline"],
@@ -231,12 +236,13 @@ def _detect_url_type(url: str) -> dict:
     **Step 1 of the Pipeline**: Extract product information from a retailer URL.
     
     This endpoint:
-    - Fetches product data (name, price, images, dimensions)
-    - Identifies the retailer and product type
+    - Fetches product data (name, price, images, dimensions) using real scrapers
+    - Identifies the retailer and product type automatically
     - Stores the product in the database
     - Sends real-time updates via WebSocket
+    - Falls back to mock data for unsupported retailers
     
-    **Note**: Currently uses mock data service for development.
+    **Supported Retailers**: IKEA (more coming soon)
     """,
     responses={
         200: {
@@ -246,17 +252,18 @@ def _detect_url_type(url: str) -> dict:
                     "example": {
                         "product": {
                             "id": "550e8400-e29b-41d4-a716-446655440000",
-                            "name": "STEFAN Chair",
+                            "name": "STOCKHOLM 2025 3-seat sofa, Alhamn beige",
                             "brand": "IKEA",
-                            "price": 99.99,
-                            "url": "https://www.ikea.com/us/en/p/stefan-chair-brown-black-00211088/",
+                            "price": 1899.0,
+                            "url": "https://www.ikea.com/us/en/p/stockholm-2025-3-seat-sofa-alhamn-beige-s69574294/",
                             "images": [
-                                "https://www.ikea.com/us/en/images/products/stefan-chair-brown-black__0737165_pe740136_s5.jpg"
+                                "https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1362835_pe955331_s5.jpg?f=xl"
                             ],
                             "dimensions": {
-                                "width": 20.5,
-                                "height": 33.5,
-                                "depth": 20.5
+                                "width": 95.625,
+                                "height": 27.5,
+                                "depth": 39.0,
+                                "unit": "inches"
                             }
                         },
                         "status": "scraped"
@@ -265,13 +272,14 @@ def _detect_url_type(url: str) -> dict:
             }
         },
         404: {"description": "Product not found"},
-        422: {"description": "Invalid request data"}
+        422: {"description": "Invalid request data"},
+        500: {"description": "Scraping failed"}
     },
     tags=["Single Product Pipeline"]
 )
 async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
     """
-    Scrape product data from URL using mock data service
+    Scrape product data from URL using real scrapers
     
     **Parameters:**
     - `url`: Product URL to scrape (required)
@@ -279,71 +287,279 @@ async def scrape_product(request: ScrapeRequest, db: Session = Depends(get_db)):
     
     **Returns:**
     - `product`: Complete product information
-    - `status`: Processing status
+    - `images`: List of product image URLs
+    - `processing_time`: Time taken to scrape (seconds)
+    - `cost`: Estimated processing cost
     """
+    start_time = datetime.now()
+    
     try:
-        # Get mock product data
-        mock_product = mock_data.get_mock_product(request.url)
-        if not mock_product:
-            # Generate new mock product if not found
-            mock_product = mock_data._generate_mock_product(request.url)
+        logger.info(f"Starting product scraping for URL: {request.url}")
         
-        # Create product in database
-        product = mock_data.create_mock_product_in_db(request.url, db)
+        # Create scraper using factory
+        scraper = ScraperFactory.create_scraper(request.url)
         
-        # Send WebSocket update
-        await manager.send_product_update(str(product.id), {
-            "stage": "scraping",
-            "progress": 100,
-            "message": f"Product scraped successfully: {mock_product['name']}",
-            "status": "completed",
-            "processing_time": 2.5,
-            "cost": 0.05
-        })
+        if not scraper:
+            logger.warning(f"No scraper available for URL: {request.url}, falling back to mock data")
+            # Fallback to mock data for unsupported retailers
+            return await _scrape_with_mock_data(request, db, start_time)
         
-        # Create Product object for response with dimensions in frontend format
-        product_data = Product(
-            id=str(product.id),
-            url=request.url,
-            name=mock_product['name'],
-            brand=mock_product['brand'],
-            variant_info=mock_product.get('description', ''),
-            price=mock_product['price'],
-            width_inches=mock_product['dimensions']['width'],
-            height_inches=mock_product['dimensions']['height'],
-            depth_inches=mock_product['dimensions']['depth'],
-            weight_kg=mock_product['weight'],
-            category=mock_product['category'],
-            room_type=mock_product['room_type'],
-            style_tags=mock_product['style_tags'],
-            placement_type=mock_product['placement_type'],
-            assembly_required=mock_product['assembly_required'],
-            retailer_id=mock_product['retailer_id'],
-            ikea_item_number=mock_product.get('ikea_item_number'),
+        # Check if scraper can handle this URL
+        if not scraper.can_handle(request.url):
+            logger.warning(f"Scraper cannot handle URL: {request.url}, falling back to mock data")
+            return await _scrape_with_mock_data(request, db, start_time)
+        
+        # Initialize scraper
+        await scraper.initialize(headless=True)
+        
+        try:
+            # Scrape product data
+            logger.info(f"Scraping product data from: {request.url}")
+            scraped_data = await scraper.scrape_product(request.url)
+            
+            if not scraped_data:
+                logger.error(f"Failed to scrape data from: {request.url}")
+                raise HTTPException(status_code=500, detail="Failed to extract product data")
+            
+            # Check if we got meaningful data (at least name and price)
+            if not scraped_data.get('name') or scraped_data.get('name') == 'Unknown Product':
+                logger.warning(f"Scraped data appears incomplete for: {request.url}, falling back to mock data")
+                return await _scrape_with_mock_data(request, db, start_time)
+            
+            # Create product in database
+            product = _create_product_in_db(scraped_data, request.url, db)
+            
+            # Send WebSocket update
+            processing_time = (datetime.now() - start_time).total_seconds()
+            await manager.send_product_update(str(product.id), {
+                "stage": "scraping",
+                "progress": 100,
+                "message": f"Product scraped successfully: {scraped_data['name']}",
+                "status": "completed",
+                "processing_time": processing_time,
+                "cost": 0.05
+            })
+            
+            # Create Product object for response
+            product_data = _create_product_response(scraped_data, product, request.url)
+            
+            logger.info(f"Successfully scraped product: {scraped_data['name']}")
+            
+            return ScrapeResponse(
+                product=product_data,
+                images=scraped_data.get('images', []),
+                processing_time=processing_time,
+                cost=0.05
+            )
+            
+        finally:
+            # Always cleanup scraper
+            await scraper.cleanup()
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Scraping failed for URL {request.url}: {str(e)}")
+        # Only fallback to mock data for certain types of errors
+        if "browser" in str(e).lower() or "page" in str(e).lower() or "context" in str(e).lower():
+            logger.warning(f"Browser-related error, falling back to mock data: {str(e)}")
+            try:
+                return await _scrape_with_mock_data(request, db, start_time)
+            except Exception as fallback_error:
+                logger.error(f"Mock data fallback also failed: {str(fallback_error)}")
+                raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        else:
+            # For other errors, don't fallback - let them fail
+            raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+
+async def _scrape_with_mock_data(request: ScrapeRequest, db: Session, start_time: datetime):
+    """Fallback to mock data when real scraping fails"""
+    logger.info(f"Using mock data fallback for URL: {request.url}")
+    
+    # Get mock product data
+    mock_product = mock_data.get_mock_product(request.url)
+    if not mock_product:
+        # Generate new mock product if not found
+        mock_product = mock_data._generate_mock_product(request.url)
+    
+    # Create product in database
+    product = mock_data.create_mock_product_in_db(request.url, db)
+    
+    # Send WebSocket update
+    processing_time = (datetime.now() - start_time).total_seconds()
+    await manager.send_product_update(str(product.id), {
+        "stage": "scraping",
+        "progress": 100,
+        "message": f"Product scraped successfully (mock data): {mock_product['name']}",
+        "status": "completed",
+        "processing_time": processing_time,
+        "cost": 0.05
+    })
+    
+    # Create Product object for response
+    product_data = Product(
+        id=str(product.id),
+        url=request.url,
+        name=mock_product['name'],
+        brand=mock_product['brand'],
+        variant_info=mock_product.get('description', ''),
+        price=mock_product['price'],
+        width_inches=mock_product['dimensions']['width'],
+        height_inches=mock_product['dimensions']['height'],
+        depth_inches=mock_product['dimensions']['depth'],
+        weight_kg=mock_product['weight'],
+        category=mock_product['category'],
+        room_type=mock_product['room_type'],
+        style_tags=mock_product['style_tags'],
+        placement_type=mock_product['placement_type'],
+        assembly_required=mock_product['assembly_required'],
+        retailer_id=mock_product['retailer_id'],
+        ikea_item_number=mock_product.get('ikea_item_number'),
+        status="scraped",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    
+    # Add frontend-expected fields
+    product_data.description = mock_product.get('description', '')
+    product_data.weight = mock_product['weight']
+    product_data.dimensions = ProductDimensions(
+        width=mock_product['dimensions']['width'],
+        height=mock_product['dimensions']['height'],
+        depth=mock_product['dimensions']['depth'],
+        unit=mock_product['dimensions']['unit']
+    )
+    
+    return ScrapeResponse(
+        product=product_data,
+        images=mock_product['images'],
+        processing_time=processing_time,
+        cost=0.05
+    )
+
+def _create_product_in_db(scraped_data: dict, url: str, db: Session) -> Product:
+    """Create product in database with duplicate handling"""
+    try:
+        # Check if product already exists
+        existing_product = db.query(Product).filter(Product.url == url).first()
+        if existing_product:
+            logger.info(f"Product already exists, updating: {existing_product.id}")
+            # Update existing product
+            existing_product.name = scraped_data['name']
+            existing_product.brand = scraped_data.get('brand', '')
+            existing_product.variant_info = scraped_data.get('description', '')
+            existing_product.price = scraped_data.get('price', 0.0)
+            existing_product.width_inches = scraped_data.get('dimensions', {}).get('width', 0.0)
+            existing_product.height_inches = scraped_data.get('dimensions', {}).get('height', 0.0)
+            existing_product.depth_inches = scraped_data.get('dimensions', {}).get('depth', 0.0)
+            existing_product.weight_kg = scraped_data.get('weight', 0.0)
+            existing_product.category = scraped_data.get('category', '')
+            existing_product.room_type = scraped_data.get('room_type', '')
+            existing_product.style_tags = scraped_data.get('style_tags', [])
+            existing_product.placement_type = scraped_data.get('placement_type', '')
+            existing_product.assembly_required = scraped_data.get('assembly_required', False)
+            existing_product.retailer_id = scraped_data.get('retailer_id', '')
+            existing_product.ikea_item_number = scraped_data.get('ikea_item_number', '')
+            existing_product.status = "scraped"
+            existing_product.updated_at = datetime.now()
+            
+            db.commit()
+            return existing_product
+        
+        # Create new product
+        product = Product(
+            id=uuid.uuid4(),
+            url=url,
+            name=scraped_data['name'],
+            brand=scraped_data.get('brand', ''),
+            variant_info=scraped_data.get('description', ''),
+            price=scraped_data.get('price', 0.0),
+            width_inches=scraped_data.get('dimensions', {}).get('width', 0.0),
+            height_inches=scraped_data.get('dimensions', {}).get('height', 0.0),
+            depth_inches=scraped_data.get('dimensions', {}).get('depth', 0.0),
+            weight_kg=scraped_data.get('weight', 0.0),
+            category=scraped_data.get('category', ''),
+            room_type=scraped_data.get('room_type', ''),
+            style_tags=scraped_data.get('style_tags', []),
+            placement_type=scraped_data.get('placement_type', ''),
+            assembly_required=scraped_data.get('assembly_required', False),
+            retailer_id=scraped_data.get('retailer_id', ''),
+            ikea_item_number=scraped_data.get('ikea_item_number', ''),
             status="scraped",
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
         
-        # Add frontend-expected fields
-        product_data.description = mock_product.get('description', '')
-        product_data.weight = mock_product['weight']
-        product_data.dimensions = ProductDimensions(
-            width=mock_product['dimensions']['width'],
-            height=mock_product['dimensions']['height'],
-            depth=mock_product['dimensions']['depth'],
-            unit=mock_product['dimensions']['unit']
-        )
+        db.add(product)
+        db.commit()
+        db.refresh(product)
         
-        return ScrapeResponse(
-            product=product_data,
-            images=mock_product['images'],
-            processing_time=2.5,
-            cost=0.05
-        )
+        logger.info(f"Created product in database: {product.id}")
+        return product
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scraping failed: {str(e)}")
+        logger.error(f"Failed to create product in database: {str(e)}")
+        db.rollback()
+        raise
+
+def _create_product_response(scraped_data: dict, product: Product, url: str) -> Product:
+    """Create Product response object from scraped data"""
+    # Create Product object for response
+    product_data = Product(
+        id=product.id,
+        url=url,
+        name=scraped_data['name'],
+        brand=scraped_data.get('brand', ''),
+        variant_info=scraped_data.get('description', ''),
+        price=scraped_data.get('price', 0.0),
+        width_inches=scraped_data.get('dimensions', {}).get('width', 0.0),
+        height_inches=scraped_data.get('dimensions', {}).get('height', 0.0),
+        depth_inches=scraped_data.get('dimensions', {}).get('depth', 0.0),
+        weight_kg=scraped_data.get('weight', 0.0),
+        category=scraped_data.get('category', ''),
+        room_type=scraped_data.get('room_type', ''),
+        style_tags=scraped_data.get('style_tags', []),
+        placement_type=scraped_data.get('placement_type', ''),
+        assembly_required=scraped_data.get('assembly_required', False),
+        retailer_id=scraped_data.get('retailer_id', ''),
+        ikea_item_number=scraped_data.get('ikea_item_number', ''),
+        status="scraped",
+        created_at=product.created_at,
+        updated_at=product.updated_at
+    )
+    
+    # Add frontend-expected fields
+    product_data.description = scraped_data.get('description', '')
+    product_data.weight = scraped_data.get('weight', 0.0)
+    
+    # Add dimensions in frontend format
+    dimensions = scraped_data.get('dimensions', {})
+    logger.info(f"Dimensions from scraped_data: {dimensions}")
+    logger.info(f"Individual fields - width: {product_data.width_inches}, height: {product_data.height_inches}, depth: {product_data.depth_inches}")
+    
+    if dimensions and any(dimensions.values()):  # Check if dimensions exist and are not all zero
+        product_data.dimensions = ProductDimensions(
+            width=dimensions.get('width', 0.0),
+            height=dimensions.get('height', 0.0),
+            depth=dimensions.get('depth', 0.0),
+            unit=dimensions.get('unit', 'inches')
+        )
+        logger.info(f"Created dimensions from scraped_data: {product_data.dimensions}")
+    else:
+        # Fallback: create dimensions from individual fields if dimensions object is missing
+        if product_data.width_inches or product_data.height_inches or product_data.depth_inches:
+            product_data.dimensions = ProductDimensions(
+                width=product_data.width_inches or 0.0,
+                height=product_data.height_inches or 0.0,
+                depth=product_data.depth_inches or 0.0,
+                unit='inches'
+            )
+            logger.info(f"Created dimensions from individual fields: {product_data.dimensions}")
+        else:
+            logger.warning("No dimensions found in scraped data")
+    
+    return product_data
 
 @router.post("/select-images", response_model=ImageSelectionResponse)
 async def select_images(request: ImageSelectionRequest, db: Session = Depends(get_db)):
