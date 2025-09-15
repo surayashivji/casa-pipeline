@@ -115,6 +115,10 @@ app.add_middleware(
 # Include API routes
 app.include_router(routes.router, prefix="/api", tags=["api"])
 
+# Add static file serving for processed images
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="temp"), name="static")
+
 @app.get("/")
 async def root():
     return {
