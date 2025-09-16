@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     
     # API Keys (will be added later)
     MESHY_API_KEY: Optional[str] = None
+    MESHY_TEST_MODE: bool = True
     
     # AWS (will be added later)
     AWS_ACCESS_KEY_ID: Optional[str] = None

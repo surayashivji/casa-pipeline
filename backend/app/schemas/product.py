@@ -129,3 +129,6 @@ class ModelStatusResponse(BaseModel):
     cost: Optional[float] = None
     model_quality: Optional[float] = None
     lods_available: Optional[List[str]] = None
+
+    class Config:
+        protected_namespaces = ()  # Add this to fix the warning

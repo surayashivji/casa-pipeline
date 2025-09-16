@@ -27,6 +27,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any# Import WebSocket manager
 from app.websocket_manager import manager
+from app.services.meshy.meshy import meshy
 
 # Import monitoring
 from app.middleware import metrics_collector
@@ -912,82 +913,181 @@ async def approve_images(request: ImageApprovalRequest, db: Session = Depends(ge
 @router.post("/generate-3d", response_model=Generate3DResponse)
 async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(get_db)):
     """
-    Step 5: Generate 3D model from approved images
+    Step 5: Generate 3D model from processed images
+    NOW USING REAL MESHY API!
     """
     try:
-        # Get product from database
+        # Get product info
         product = db.query(Product).filter(Product.id == request.product_id).first()
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
         
-        # Mock 3D generation
-        model_data = {
-            "model_url": f"https://s3.amazonaws.com/model-{uuid.uuid4().hex[:8]}.glb",
-            "preview_url": f"https://s3.amazonaws.com/preview-{uuid.uuid4().hex[:8]}.jpg",
-            "file_size": 2.5 * 1024 * 1024,  # 2.5MB
-            "vertices_count": 15420,
-            "triangles_count": 30840,
-            "materials_count": 3,
-            "textures_count": 2,
-            "generation_time": 45.2,
-            "quality_score": 0.87
-        }
+        # Use provided image URLs
+        # image_urls = request.image_urls
+        # if not image_urls:
+        #     raise HTTPException(status_code=400, detail="No images provided")
         
-        # Create processing stage
+        # logger.info(f"Creating 3D model for {product.name} with {len(image_urls)} images")
+        
+        # if 'dummy_api_key' in self.api_key:
+        logger.info("Using test API key - replacing with test images")
+        image_urls = [
+            "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800",
+            "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800"
+        ]
+        logger.info(f"Creating 3D model for {len(image_urls)} images")
+
+
+        # Call Meshy API (with test key for now)
+        result = meshy.create_task(image_urls)
+        
+        if not result["success"]:
+            logger.error(f"Meshy API failed: {result.get('error')}")
+            raise HTTPException(status_code=500, detail=result.get("error", "Meshy API failed"))
+        
+        task_id = result["task_id"]
+        logger.info(f"Meshy task created: {task_id}")
+        
+        # Store in database
+        model_3d = Model3D(
+            product_id=request.product_id,
+            meshy_task_id=task_id,
+            status="processing",
+            generation_method="meshy",
+            is_test_mode=True  # We're using test API key
+        )
+        db.add(model_3d)
+        
+        # Also update ProcessingStage
         stage = mock_data.create_processing_stage(
             product_id=request.product_id,
-            stage_name="model_generation",
-            input_data={"images": request.image_urls},
-            output_data=model_data,
+            stage_name="3d_generation",
+            input_data={"images": image_urls, "image_count": len(image_urls)},
+            output_data={"meshy_task_id": task_id},
             db=db
         )
         
+        db.commit()
+        
         # Send WebSocket update
         await manager.send_product_update(str(request.product_id), {
-            "stage": "model_generation",
-            "progress": 100,
-            "message": f"3D model generated successfully (Quality: {model_data['quality_score']:.2f})",
-            "status": "completed",
-            "processing_time": model_data["generation_time"],
-            "cost": 0.50,
-            "model_url": model_data["model_url"],
-            "quality_score": model_data["quality_score"]
+            "stage": "3d_generation",
+            "progress": 0,
+            "message": f"Started 3D generation with {len(image_urls)} images",
+            "status": "processing"
         })
         
-        # Generate a task ID for 3D generation
-        task_id = f"3d_gen_{uuid.uuid4().hex[:8]}"
-        
+        # Return same format as before (so frontend doesn't need changes)
         return Generate3DResponse(
             product_id=request.product_id,
             task_id=task_id,
             status="processing",
-            estimated_completion=datetime.now() + timedelta(minutes=15),
-            cost=2.50
+            estimated_completion=datetime.now() + timedelta(seconds=30),  # Test mode is fast
+            cost=0.00  # Test API key = free
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"3D generation failed: {str(e)}")
+        logger.error(f"3D generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/model-status/{task_id}", response_model=ModelStatusResponse)
 async def get_model_status(task_id: str, db: Session = Depends(get_db)):
     """
-    Check the status of a 3D model generation task
+    Check status of 3D model generation
+    NOW USING REAL MESHY API!
     """
     try:
-        # Mock model status - in real implementation, this would check the actual task status
+        # Get status from Meshy
+        logger.info(f"Checking status for task: {task_id}")
+        status_data = meshy.get_status(task_id)
+        
+        # Extract Meshy status
+        meshy_status = status_data.get("status", "PENDING")
+        progress = status_data.get("progress", 0)
+        
+        # Map Meshy status to our format
+        if meshy_status == "SUCCEEDED":
+            status = "completed"
+            progress = 100
+        elif meshy_status == "FAILED":
+            status = "failed"
+            progress = 0
+        elif meshy_status in ["PENDING", "IN_PROGRESS"]:
+            status = "processing"
+            # Ensure progress shows something even if 0
+            progress = max(progress, 10)
+        else:
+            status = "processing"
+        
+        logger.info(f"Task {task_id}: {meshy_status} ({progress}%) -> {status}")
+        
+        # Update database if we have the record
+        model_3d = db.query(Model3D).filter(Model3D.meshy_task_id == task_id).first()
+        if model_3d:
+            if meshy_status == "SUCCEEDED" and model_3d.status != "completed":
+                # Update model record
+                model_3d.status = "completed"
+                model_3d.model_url = status_data.get("model_urls", {}).get("glb")
+                model_3d.thumbnail_url = status_data.get("thumbnail_url")
+                model_3d.completed_at = datetime.now()
+                
+                # Update processing stage
+                stage = db.query(ProcessingStage).filter(
+                    ProcessingStage.product_id == model_3d.product_id,
+                    ProcessingStage.stage_name == "3d_generation"
+                ).first()
+                if stage:
+                    stage.status = "completed"
+                    stage.completed_at = datetime.now()
+                    stage.output_data = {
+                        "model_url": model_3d.model_url,
+                        "thumbnail_url": model_3d.thumbnail_url
+                    }
+                
+                db.commit()
+                
+                # Send WebSocket update
+                await manager.send_product_update(str(model_3d.product_id), {
+                    "stage": "3d_generation",
+                    "progress": 100,
+                    "message": "3D model completed!",
+                    "status": "completed",
+                    "model_url": model_3d.model_url,
+                    "thumbnail_url": model_3d.thumbnail_url
+                })
+                
+                logger.info(f"✅ Model completed for product {model_3d.product_id}")
+            
+            elif meshy_status == "FAILED" and model_3d.status != "failed":
+                model_3d.status = "failed"
+                model_3d.error_message = status_data.get("message", "Generation failed")
+                db.commit()
+                
+                logger.error(f"❌ Model generation failed for product {model_3d.product_id}")
+        
+        # Return response in same format as before
         return ModelStatusResponse(
             task_id=task_id,
-            status="completed",  # Mock as completed
-            progress=100,
-            model_url="https://s3.amazonaws.com/models/mock-model.glb",
-            processing_time=45.2,
-            cost=2.50,
-            model_quality=0.95,
-            lods_available=["high", "medium", "low"]
+            status=status,
+            progress=progress,
+            model_url=status_data.get("model_urls", {}).get("glb") if status == "completed" else None,
+            thumbnail_url=status_data.get("thumbnail_url") if status == "completed" else None,
+            processing_time=30.0 if status == "completed" else None,  # Test mode is fast
+            cost=0.00,  # Test mode is free
+            model_quality=0.95 if status == "completed" else None,
+            lods_available=["high"] if status == "completed" else None
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Model status check failed: {str(e)}")
+        logger.error(f"Status check failed: {e}")
+        return ModelStatusResponse(
+            task_id=task_id,
+            status="failed",
+            progress=0,
+            error=str(e)
+        )
 
 @router.post("/optimize-model", response_model=ModelStatusResponse)
 async def optimize_model(request: Generate3DRequest, db: Session = Depends(get_db)):

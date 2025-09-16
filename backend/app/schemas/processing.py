@@ -57,9 +57,10 @@ class ProductImage(ProductImageBase):
 class Model3DBase(BaseModel):
     model_config = {"protected_namespaces": ()}
     
-    meshy_job_id: Optional[str] = None
+    meshy_task_id: Optional[str] = None  # <-- Change from meshy_job_id to meshy_task_id
     model_name: Optional[str] = None
-    s3_url: str
+    model_url: Optional[str] = None  # <-- Make this optional for now
+    s3_url: Optional[str] = None  # <-- Make this optional too
     file_size_bytes: Optional[int] = None
     format: str = "glb"
     vertices_count: Optional[int] = None
@@ -70,6 +71,10 @@ class Model3DBase(BaseModel):
     cost_usd: float = 0.0
     is_optimized: bool = False
     optimization_ratio: Optional[float] = None
+    status: Optional[str] = "processing"  # <-- Add this field
+    generation_method: Optional[str] = "meshy"  # <-- Add this field
+    is_test_mode: Optional[bool] = False  # <-- Add this field
+    thumbnail_url: Optional[str] = None  # <-- Add this field
 
 class Model3DCreate(Model3DBase):
     product_id: UUID
