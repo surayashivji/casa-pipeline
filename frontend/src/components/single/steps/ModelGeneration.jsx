@@ -17,12 +17,15 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
   const [retryCount, setRetryCount] = useState(0);
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
-
+  
   useEffect(() => {
-    // Track mounting
+    let isCancelled = false; // Add cancellation flag
     isMountedRef.current = true;
     
     const generateAndPollModel = async () => {
+      // Early return if cancelled
+      if (isCancelled) return;
+      
       console.log('=== STARTING GENERATION ===');
       console.log('Data:', data);
       console.log('Retry count:', retryCount);
@@ -40,6 +43,12 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           return;
         }
         
+        // Small delay to handle StrictMode double-render
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Check again after delay
+        if (isCancelled || !isMountedRef.current) return;
+        
         console.log('Calling generate3DModel...');
         
         // Step 1: Start generation
@@ -55,7 +64,8 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         
         console.log('API Response:', apiResponse);
         
-        if (!isMountedRef.current) return;
+        // Check if cancelled before continuing
+        if (isCancelled || !isMountedRef.current) return;
         
         const taskId = apiResponse.task_id;
         console.log('Task ID:', taskId);
@@ -78,7 +88,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         const maxPollAttempts = 60;
         
         pollIntervalRef.current = setInterval(async () => {
-          if (!isMountedRef.current) {
+          if (isCancelled || !isMountedRef.current) {
             clearInterval(pollIntervalRef.current);
             return;
           }
@@ -105,7 +115,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
             const statusResponse = await checkModelStatus(taskId);
             console.log('Status response:', statusResponse);
             
-            if (!isMountedRef.current) return;
+            if (isCancelled || !isMountedRef.current) return;
             
             if (statusResponse.status === 'completed') {
               clearInterval(pollIntervalRef.current);
@@ -154,13 +164,27 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
             
           } catch (pollError) {
             console.error('Status polling error:', pollError);
+            // Don't stop polling on transient errors
+            if (pollAttempts >= 5) {
+              // But stop after multiple failures
+              clearInterval(pollIntervalRef.current);
+              if (!isCancelled) {
+                setError(createError(
+                  'Failed to check model status',
+                  ERROR_TYPES.NETWORK,
+                  ERROR_SEVERITY.MEDIUM,
+                  { originalError: pollError }
+                ));
+                setIsGenerating(false);
+              }
+            }
           }
         }, 3000);
         
       } catch (err) {
-        console.error('Generation error:', err);
+        if (isCancelled || !isMountedRef.current) return;
         
-        if (!isMountedRef.current) return;
+        console.error('Generation error:', err);
         
         setError(createError(
           err.message || 'Failed to start 3D model generation',
@@ -176,12 +200,13 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
     
     // Cleanup on unmount
     return () => {
+      isCancelled = true; // Set flag to prevent further execution
       isMountedRef.current = false;
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [data, retryCount]);
+  }, [data.product?.id, retryCount]); // More specific dependencies
 
   const handleContinue = () => {
     onNext({ 
