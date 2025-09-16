@@ -19,21 +19,28 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
   const isMountedRef = useRef(true);
 
   useEffect(() => {
-    // Cleanup on unmount
-    return () => {
-      isMountedRef.current = false;
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
+    // Track mounting
+    isMountedRef.current = true;
+    
     const generateAndPollModel = async () => {
-      console.log('=== STARTING GENERATION ===');  // Add this line
+      console.log('=== STARTING GENERATION ===');
+      console.log('Data:', data);
+      console.log('Retry count:', retryCount);
+      
       try {
         setCurrentStep('Starting 3D generation...');
         setProgress(10);
+        
+        // Check if we have required data
+        if (!data?.product?.id || !data?.processedImages) {
+          console.error('Missing required data:', { 
+            hasProduct: !!data?.product, 
+            hasProcessedImages: !!data?.processedImages 
+          });
+          return;
+        }
+        
+        console.log('Calling generate3DModel...');
         
         // Step 1: Start generation
         const apiResponse = await handleApiError(
@@ -46,9 +53,13 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           2000
         );
         
+        console.log('API Response:', apiResponse);
+        
         if (!isMountedRef.current) return;
         
         const taskId = apiResponse.task_id;
+        console.log('Task ID:', taskId);
+        
         setCurrentStep('Processing images...');
         setProgress(20);
         
@@ -60,27 +71,26 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           cost: apiResponse.cost
         });
         
+        console.log('Starting polling for task:', taskId);
+        
         // Step 2: Poll for status
         let pollAttempts = 0;
-        const maxPollAttempts = 60; // 3 minutes max (60 * 3 seconds)
-
-        console.log('Starting to poll for task:', taskId);
+        const maxPollAttempts = 60;
         
         pollIntervalRef.current = setInterval(async () => {
-          console.log('Polling attempt:', pollAttempts + 1);
           if (!isMountedRef.current) {
             clearInterval(pollIntervalRef.current);
             return;
           }
           
+          console.log('Poll attempt:', pollAttempts + 1);
+          
           try {
             pollAttempts++;
             
-            // Update progress based on attempts
             const estimatedProgress = Math.min(20 + (pollAttempts * 1.3), 90);
             setProgress(Math.round(estimatedProgress));
             
-            // Update status message
             if (pollAttempts < 10) {
               setCurrentStep('Analyzing product structure...');
             } else if (pollAttempts < 20) {
@@ -94,28 +104,24 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
             // Check status
             const statusResponse = await checkModelStatus(taskId);
             console.log('Status response:', statusResponse);
-
+            
             if (!isMountedRef.current) return;
             
-            // Handle different status responses
             if (statusResponse.status === 'completed') {
               clearInterval(pollIntervalRef.current);
               setProgress(100);
               setCurrentStep('Model ready!');
               
-              // Update model data with full response
               setModel3D({
                 taskId: taskId,
                 meshyJobId: taskId,
                 status: 'completed',
                 modelUrl: statusResponse.model_url,
-                modelPreview: statusResponse.thumbnail_url,
                 thumbnailUrl: statusResponse.thumbnail_url,
                 processingTime: statusResponse.processing_time,
                 cost: statusResponse.cost || apiResponse.cost,
                 modelQuality: statusResponse.model_quality,
                 lodsAvailable: statusResponse.lods_available,
-                // Mock additional data for display (will be replaced with real data from API later)
                 vertices: 15420,
                 triangles: 30840,
                 fileSize: '15.2 MB',
@@ -133,18 +139,12 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
                 { taskId, statusResponse }
               ));
               setIsGenerating(false);
-              
-            } else if (statusResponse.progress) {
-              // Update progress from API if available
-              const apiProgress = Math.max(statusResponse.progress, estimatedProgress);
-              setProgress(Math.round(apiProgress));
             }
             
-            // Timeout check
             if (pollAttempts >= maxPollAttempts) {
               clearInterval(pollIntervalRef.current);
               setError(createError(
-                'Model generation timed out. Please try again.',
+                'Model generation timed out.',
                 ERROR_TYPES.TIMEOUT,
                 ERROR_SEVERITY.MEDIUM,
                 { taskId, attempts: pollAttempts }
@@ -154,22 +154,12 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
             
           } catch (pollError) {
             console.error('Status polling error:', pollError);
-            // Don't stop polling on transient errors
-            if (pollAttempts >= 5) {
-              // But stop after multiple failures
-              clearInterval(pollIntervalRef.current);
-              setError(createError(
-                'Failed to check model status',
-                ERROR_TYPES.NETWORK,
-                ERROR_SEVERITY.MEDIUM,
-                { originalError: pollError }
-              ));
-              setIsGenerating(false);
-            }
           }
-        }, 3000); // Poll every 3 seconds
+        }, 3000);
         
       } catch (err) {
+        console.error('Generation error:', err);
+        
         if (!isMountedRef.current) return;
         
         setError(createError(
@@ -181,8 +171,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         setIsGenerating(false);
       }
     };
-
+  
     generateAndPollModel();
+    
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
   }, [data, retryCount]);
 
   const handleContinue = () => {
