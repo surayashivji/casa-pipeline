@@ -1,52 +1,179 @@
-import { useState, useEffect } from 'react';
-import { generate3DModel } from '../../../shared/services/apiService';
+import { useState, useEffect, useRef } from 'react';
+import { generate3DModel, checkModelStatus } from '../../../shared/services/apiService';
 import { CheckIcon, CubeIcon } from '@heroicons/react/24/solid';
 import { createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
 import ErrorMessage from '../../../shared/components/ErrorMessage';
 import Model3DViewer from '../../shared/Model3DViewer';
 
+console.log('Imported functions:', { generate3DModel, checkModelStatus });
+
+
 const ModelGeneration = ({ data, onNext, onBack }) => {
   const [isGenerating, setIsGenerating] = useState(true);
-  const [currentStep, setCurrentStep] = useState('');
+  const [currentStep, setCurrentStep] = useState('Initializing...');
   const [progress, setProgress] = useState(0);
   const [model3D, setModel3D] = useState(null);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const pollIntervalRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    const generateModel = async () => {
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const generateAndPollModel = async () => {
+      console.log('=== STARTING GENERATION ===');  // Add this line
       try {
+        setCurrentStep('Starting 3D generation...');
+        setProgress(10);
+        
+        // Step 1: Start generation
         const apiResponse = await handleApiError(
           () => generate3DModel(
             data.product.id,
-            data.processedImages.map(img => img.processed), // Extract processed image URLs
+            data.processedImages.map(img => img.processed),
             { quality: 'high', auto_approve: true }
           ),
-          2, // max retries for 3D generation
-          2000 // longer delay for 3D generation
+          2,
+          2000
         );
         
-        // Adapt API response to component format
-        const adaptedResult = {
-          taskId: apiResponse.task_id,
-          status: apiResponse.status,
-          estimatedCompletion: apiResponse.estimated_completion,
-          cost: apiResponse.cost,
-          // Use working test GLB URLs
-          modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb',
-          modelPreview: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF/duckCM.png',
-          meshyJobId: apiResponse.task_id,
-          vertices: 15420,
-          triangles: 30840,
-          fileSize: '15.2 MB',
-          format: 'glb'
-        };
+        if (!isMountedRef.current) return;
         
-        setModel3D(adaptedResult);
-        setIsGenerating(false);
+        const taskId = apiResponse.task_id;
+        setCurrentStep('Processing images...');
+        setProgress(20);
+        
+        // Store initial task info
+        setModel3D({
+          taskId: taskId,
+          status: 'processing',
+          estimatedCompletion: apiResponse.estimated_completion,
+          cost: apiResponse.cost
+        });
+        
+        // Step 2: Poll for status
+        let pollAttempts = 0;
+        const maxPollAttempts = 60; // 3 minutes max (60 * 3 seconds)
+
+        console.log('Starting to poll for task:', taskId);
+        
+        pollIntervalRef.current = setInterval(async () => {
+          console.log('Polling attempt:', pollAttempts + 1);
+          if (!isMountedRef.current) {
+            clearInterval(pollIntervalRef.current);
+            return;
+          }
+          
+          try {
+            pollAttempts++;
+            
+            // Update progress based on attempts
+            const estimatedProgress = Math.min(20 + (pollAttempts * 1.3), 90);
+            setProgress(Math.round(estimatedProgress));
+            
+            // Update status message
+            if (pollAttempts < 10) {
+              setCurrentStep('Analyzing product structure...');
+            } else if (pollAttempts < 20) {
+              setCurrentStep('Generating 3D geometry...');
+            } else if (pollAttempts < 30) {
+              setCurrentStep('Applying textures...');
+            } else {
+              setCurrentStep('Finalizing model...');
+            }
+            
+            // Check status
+            const statusResponse = await checkModelStatus(taskId);
+            console.log('Status response:', statusResponse);
+
+            if (!isMountedRef.current) return;
+            
+            // Handle different status responses
+            if (statusResponse.status === 'completed') {
+              clearInterval(pollIntervalRef.current);
+              setProgress(100);
+              setCurrentStep('Model ready!');
+              
+              // Update model data with full response
+              setModel3D({
+                taskId: taskId,
+                meshyJobId: taskId,
+                status: 'completed',
+                modelUrl: statusResponse.model_url,
+                modelPreview: statusResponse.thumbnail_url,
+                thumbnailUrl: statusResponse.thumbnail_url,
+                processingTime: statusResponse.processing_time,
+                cost: statusResponse.cost || apiResponse.cost,
+                modelQuality: statusResponse.model_quality,
+                lodsAvailable: statusResponse.lods_available,
+                // Mock additional data for display (will be replaced with real data from API later)
+                vertices: 15420,
+                triangles: 30840,
+                fileSize: '15.2 MB',
+                format: 'glb'
+              });
+              
+              setIsGenerating(false);
+              
+            } else if (statusResponse.status === 'failed') {
+              clearInterval(pollIntervalRef.current);
+              setError(createError(
+                statusResponse.error || 'Model generation failed',
+                ERROR_TYPES.PROCESSING,
+                ERROR_SEVERITY.HIGH,
+                { taskId, statusResponse }
+              ));
+              setIsGenerating(false);
+              
+            } else if (statusResponse.progress) {
+              // Update progress from API if available
+              const apiProgress = Math.max(statusResponse.progress, estimatedProgress);
+              setProgress(Math.round(apiProgress));
+            }
+            
+            // Timeout check
+            if (pollAttempts >= maxPollAttempts) {
+              clearInterval(pollIntervalRef.current);
+              setError(createError(
+                'Model generation timed out. Please try again.',
+                ERROR_TYPES.TIMEOUT,
+                ERROR_SEVERITY.MEDIUM,
+                { taskId, attempts: pollAttempts }
+              ));
+              setIsGenerating(false);
+            }
+            
+          } catch (pollError) {
+            console.error('Status polling error:', pollError);
+            // Don't stop polling on transient errors
+            if (pollAttempts >= 5) {
+              // But stop after multiple failures
+              clearInterval(pollIntervalRef.current);
+              setError(createError(
+                'Failed to check model status',
+                ERROR_TYPES.NETWORK,
+                ERROR_SEVERITY.MEDIUM,
+                { originalError: pollError }
+              ));
+              setIsGenerating(false);
+            }
+          }
+        }, 3000); // Poll every 3 seconds
+        
       } catch (err) {
+        if (!isMountedRef.current) return;
+        
         setError(createError(
-          err.message || 'Failed to generate 3D model',
+          err.message || 'Failed to start 3D model generation',
           ERROR_TYPES.PROCESSING,
           ERROR_SEVERITY.HIGH,
           { originalError: err, retryCount }
@@ -55,7 +182,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
       }
     };
 
-    generateModel();
+    generateAndPollModel();
   }, [data, retryCount]);
 
   const handleContinue = () => {
@@ -68,11 +195,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
     });
   };
 
-
   const handleRetry = () => {
+    // Clean up any existing polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    
     setIsGenerating(true);
     setError(null);
     setProgress(0);
+    setCurrentStep('Initializing...');
     setRetryCount(prev => prev + 1);
   };
 
@@ -121,7 +253,6 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         <div className="space-y-6">
           <div className="bg-primary-50 rounded-lg p-8 border border-primary-200">
             <div className="flex flex-col items-center text-center">
-              {/* Simple Spinning Loader */}
               <div className="mb-6">
                 <div className="animate-spin h-12 w-12 border-3 border-primary-600 border-t-transparent rounded-full flex items-center justify-center">
                   <CubeIcon className="h-6 w-6 text-primary-600" />
@@ -130,11 +261,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
               
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Generating 3D Model</h3>
               <p className="text-primary-700 font-medium mb-1">{currentStep}</p>
-              <p className="text-sm text-gray-600">This may take a few minutes...</p>
+              <p className="text-sm text-gray-600">
+                {model3D?.taskId ? (
+                  <span className="font-mono text-xs">Task ID: {model3D.taskId}</span>
+                ) : (
+                  'This may take a few minutes...'
+                )}
+              </p>
             </div>
           </div>
 
-          {/* Clean Progress Bar */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Progress</span>
@@ -153,34 +289,68 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="flex items-start space-x-4">
               <div className="w-48 h-48 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                <Model3DViewer 
-                  modelUrl={model3D?.modelUrl}
-                  className="w-full h-full"
-                />
+                {model3D?.modelUrl ? (
+                  <Model3DViewer 
+                    modelUrl={model3D.modelUrl}
+                    thumbnailUrl={model3D.thumbnailUrl}
+                    className="w-full h-full"
+                  />
+                ) : model3D?.thumbnailUrl ? (
+                  <img 
+                    src={model3D.thumbnailUrl} 
+                    alt="3D Model Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = '/placeholder-3d.png';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <CubeIcon className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
               </div>
               <div className="flex-1 space-y-3">
                 <h3 className="text-lg font-medium text-gray-900">Model Generated Successfully!</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Model ID:</span>
-                    <span className="font-mono text-gray-900">{model3D.meshyJobId}</span>
+                    <span className="font-mono text-xs text-gray-900">{model3D?.meshyJobId}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Vertices:</span>
-                    <span className="text-gray-900">{model3D.vertices.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Triangles:</span>
-                    <span className="text-gray-900">{model3D.triangles.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">File Size:</span>
-                    <span className="text-gray-900">{model3D.fileSize}</span>
-                  </div>
+                  {model3D?.vertices && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Vertices:</span>
+                      <span className="text-gray-900">{model3D.vertices.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {model3D?.triangles && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Triangles:</span>
+                      <span className="text-gray-900">{model3D.triangles.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {model3D?.fileSize && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">File Size:</span>
+                      <span className="text-gray-900">{model3D.fileSize}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-500">Format:</span>
-                    <span className="text-gray-900">{model3D.format.toUpperCase()}</span>
+                    <span className="text-gray-900">{(model3D?.format || 'GLB').toUpperCase()}</span>
                   </div>
+                  {model3D?.cost !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Cost:</span>
+                      <span className="text-gray-900">${model3D.cost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {model3D?.processingTime && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Processing Time:</span>
+                      <span className="text-gray-900">{model3D.processingTime.toFixed(1)}s</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

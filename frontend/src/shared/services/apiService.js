@@ -97,8 +97,25 @@ export const generate3DModel = async (productId, imageUrls, settings = {}) => {
   });
 };
 
+// Add this function to your apiService.js
 export const checkModelStatus = async (taskId) => {
-  return apiClient.get(`/model-status/${taskId}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/model-status/${taskId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to check model status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error checking model status:', error);
+    throw error;
+  }
 };
 
 export const optimizeModel = async (productId, imageUrls, settings = {}) => {
