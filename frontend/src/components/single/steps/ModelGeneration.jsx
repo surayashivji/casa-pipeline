@@ -3,6 +3,7 @@ import { generate3DModel } from '../../../shared/services/apiService';
 import { CheckIcon, CubeIcon } from '@heroicons/react/24/solid';
 import { createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../../shared/utils/errorHandling';
 import ErrorMessage from '../../../shared/components/ErrorMessage';
+import Model3DViewer from '../../shared/Model3DViewer';
 
 const ModelGeneration = ({ data, onNext, onBack }) => {
   const [isGenerating, setIsGenerating] = useState(true);
@@ -31,9 +32,9 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           status: apiResponse.status,
           estimatedCompletion: apiResponse.estimated_completion,
           cost: apiResponse.cost,
-          // Mock additional fields that component expects
-          modelUrl: `https://example.com/models/${apiResponse.task_id}.glb`,
-          modelPreview: `https://example.com/previews/${apiResponse.task_id}.jpg`,
+          // Use working test GLB URLs
+          modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb',
+          modelPreview: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF/duckCM.png',
           meshyJobId: apiResponse.task_id,
           vertices: 15420,
           triangles: 30840,
@@ -151,11 +152,10 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         <div className="space-y-6">
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="flex items-start space-x-4">
-              <div className="w-48 h-48 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
-                <img 
-                  src={model3D.modelPreview}
-                  alt="3D Model Preview"
-                  className="max-w-full max-h-full object-contain"
+              <div className="w-48 h-48 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <Model3DViewer 
+                  modelUrl={model3D?.modelUrl}
+                  className="w-full h-full"
                 />
               </div>
               <div className="flex-1 space-y-3">

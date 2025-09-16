@@ -16,7 +16,7 @@ function AppContent() {
   const isAdminMode = location.pathname === '/admin';
 
   const handleAdminClick = () => {
-    navigate('/admin');
+    window.open('/admin', '_blank');
   };
 
   const handleBackToProcessing = () => {

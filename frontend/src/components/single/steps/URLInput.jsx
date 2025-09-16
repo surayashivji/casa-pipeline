@@ -110,7 +110,7 @@ const URLInput = ({ onNext }) => {
                 <span>Scraping data...</span>
               </>
             ) : (
-              <span>Continue to Product Review</span>
+              <span>Scrape Product</span>
             )}
           </button>
         </div>

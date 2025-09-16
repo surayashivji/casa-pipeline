@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { optimizeModel } from '../../../shared/services/apiService';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import Model3DViewer from '../../shared/Model3DViewer';
 
 const ModelViewer = ({ data, onNext, onBack }) => {
   const [isOptimizing, setIsOptimizing] = useState(true);
@@ -96,16 +97,13 @@ const ModelViewer = ({ data, onNext, onBack }) => {
       </div>
 
       <div className="bg-gray-100 rounded-lg p-8">
-        <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-center">
-            <img 
-              src={data.model3D.modelPreview}
-              alt="3D Model"
-              className="max-w-full max-h-full object-contain"
-            />
-            <div className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded">
-              3D Preview
-            </div>
+        <div className="relative bg-gray-200 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+          <Model3DViewer 
+            modelUrl={data.model3D?.modelUrl}
+            className="w-full h-full"
+          />
+          <div className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded pointer-events-none">
+            3D Preview
           </div>
         </div>
       </div>
