@@ -3,12 +3,33 @@ import { mockProducts } from '../../data/mockProducts';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
 const ProductGrid = ({ products, onNext, onBack }) => {
-  // Use mock products for now
-  const displayProducts = mockProducts;
+  // Use provided products or fallback to mock products
+  const displayProducts = products && products.length > 0 ? products : mockProducts;
+  
+  // Convert CSV data to display format if needed
+  const formattedProducts = displayProducts.map((product, index) => {
+    // If it's CSV data, convert to display format
+    if (product.name && product.brand && product.price && product.image_urls) {
+      return {
+        id: `csv-${index}`,
+        name: product.name,
+        brand: product.brand,
+        price: product.price,
+        images: product.image_urls,
+        dimensions: {
+          width: product.width_inches,
+          height: product.height_inches,
+          depth: product.depth_inches
+        }
+      };
+    }
+    // If it's already in display format, return as is
+    return product;
+  });
   
   // Initialize with all products selected by default
   const [selectedProducts, setSelectedProducts] = useState(
-    displayProducts.map(p => p.id)
+    formattedProducts.map(p => p.id)
   );
 
   const toggleProduct = (productId) => {
@@ -21,7 +42,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
   };
 
   const selectAll = () => {
-    setSelectedProducts(displayProducts.map(p => p.id));
+    setSelectedProducts(formattedProducts.map(p => p.id));
   };
 
   const clearSelection = () => {
@@ -33,7 +54,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
       alert('Please select at least one product');
       return;
     }
-    const selected = displayProducts.filter(p => selectedProducts.includes(p.id));
+    const selected = formattedProducts.filter(p => selectedProducts.includes(p.id));
     onNext({ selectedProducts: selected });
   };
 
@@ -44,7 +65,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Select Products to Process</h2>
             <p className="mt-1 text-gray-600">
-              {selectedProducts.length} of {displayProducts.length} products selected
+              {selectedProducts.length} of {formattedProducts.length} products selected
             </p>
             <div className="mt-2 space-x-2">
               <button
@@ -66,7 +87,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
         {/* Product List - Vertical Layout */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <div className="max-h-96 overflow-y-auto">
-            {displayProducts.map((product, index) => {
+            {formattedProducts.map((product, index) => {
               const isSelected = selectedProducts.includes(product.id);
               return (
                 <div
@@ -98,11 +119,22 @@ const ProductGrid = ({ products, onNext, onBack }) => {
 
                     {/* Product Image */}
                     <div className="flex-shrink-0 w-16 h-16 mr-4 bg-gray-50 rounded flex items-center justify-center overflow-hidden">
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="max-w-full max-h-full object-contain"
-                      />
+                      {product.images && product.images.length > 0 ? (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="max-w-full max-h-full object-contain"
+                          onError={(e) => {
+                            console.log('Image failed to load:', product.images[0]);
+                            console.log('Error:', e);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">No Image</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Product Info */}

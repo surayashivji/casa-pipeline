@@ -26,8 +26,13 @@ import uuid
 import asyncio
 import logging
 import os
+import pandas as pd
+import io
 from datetime import datetime, timedelta
-from typing import List, Dict, Any# Import WebSocket manager
+from typing import List, Dict, Any
+from fastapi import UploadFile, File
+from fastapi.responses import StreamingResponse
+# Import WebSocket manager
 from app.websocket_manager import manager
 from app.services.meshy.meshy import meshy
 
@@ -1839,6 +1844,313 @@ async def get_processing_stages(
     except Exception as e:
         logger.error(f"Failed to get processing stages: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve processing stages: {str(e)}")
+
+# ============================================================================
+# BATCH CSV PROCESSING ENDPOINTS
+# ============================================================================
+
+@router.post("/batch/validate-csv-data")
+async def validate_csv_data(file: UploadFile = File(...)):
+    """
+    Validate CSV file and return parsed data with validation results
+    """
+    try:
+        # Check file type
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="File must be a CSV file")
+        
+        # Read CSV content
+        content = await file.read()
+        csv_string = content.decode('utf-8')
+        
+        # Parse CSV
+        df = pd.read_csv(io.StringIO(csv_string))
+        
+        # Required columns
+        required_columns = [
+            'name', 'brand', 'price', 'url', 'image_urls',
+            'width_inches', 'height_inches', 'depth_inches', 'weight_kg',
+            'category', 'room_type', 'style_tags', 'placement_type',
+            'assembly_required', 'retailer_id', 'ikea_item_number'
+        ]
+        
+        # Check for required columns
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return {
+                "isValid": False,
+                "errorCount": len(missing_columns),
+                "errors": [f"Missing required column: {col}" for col in missing_columns],
+                "data": []
+            }
+        
+        # Validate data types and required fields
+        errors = []
+        valid_rows = []
+        
+        for index, row in df.iterrows():
+            row_errors = []
+            
+            # Check required fields
+            if pd.isna(row['name']) or str(row['name']).strip() == '':
+                row_errors.append(f"Row {index + 1}: Name is required")
+            
+            if pd.isna(row['brand']) or str(row['brand']).strip() == '':
+                row_errors.append(f"Row {index + 1}: Brand is required")
+            
+            if pd.isna(row['price']) or not isinstance(row['price'], (int, float)) or row['price'] < 0:
+                row_errors.append(f"Row {index + 1}: Price must be a positive number")
+            
+            if pd.isna(row['url']) or str(row['url']).strip() == '':
+                row_errors.append(f"Row {index + 1}: URL is required")
+            
+            # Parse image URLs
+            image_urls = []
+            if not pd.isna(row['image_urls']):
+                try:
+                    # Handle comma-separated URLs
+                    urls_str = str(row['image_urls']).strip()
+                    if urls_str:
+                        image_urls = [url.strip() for url in urls_str.split(',') if url.strip()]
+                except:
+                    row_errors.append(f"Row {index + 1}: Invalid image URLs format")
+            
+            # Parse style tags
+            style_tags = []
+            if not pd.isna(row['style_tags']):
+                try:
+                    tags_str = str(row['style_tags']).strip()
+                    if tags_str:
+                        style_tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+                except:
+                    row_errors.append(f"Row {index + 1}: Invalid style tags format")
+            
+            # Convert numeric fields
+            try:
+                price = float(row['price']) if not pd.isna(row['price']) else 0.0
+                width = float(row['width_inches']) if not pd.isna(row['width_inches']) else 0.0
+                height = float(row['height_inches']) if not pd.isna(row['height_inches']) else 0.0
+                depth = float(row['depth_inches']) if not pd.isna(row['depth_inches']) else 0.0
+                weight = float(row['weight_kg']) if not pd.isna(row['weight_kg']) else 0.0
+                assembly_required = bool(row['assembly_required']) if not pd.isna(row['assembly_required']) else False
+            except (ValueError, TypeError) as e:
+                row_errors.append(f"Row {index + 1}: Invalid numeric values - {str(e)}")
+                continue
+            
+            if row_errors:
+                errors.extend(row_errors)
+            else:
+                # Create valid row data
+                valid_row = {
+                    'name': str(row['name']).strip(),
+                    'brand': str(row['brand']).strip(),
+                    'price': price,
+                    'url': str(row['url']).strip(),
+                    'image_urls': image_urls,
+                    'width_inches': width,
+                    'height_inches': height,
+                    'depth_inches': depth,
+                    'weight_kg': weight,
+                    'category': str(row['category']).strip() if not pd.isna(row['category']) else '',
+                    'room_type': str(row['room_type']).strip() if not pd.isna(row['room_type']) else '',
+                    'style_tags': style_tags,
+                    'placement_type': str(row['placement_type']).strip() if not pd.isna(row['placement_type']) else '',
+                    'assembly_required': assembly_required,
+                    'retailer_id': str(row['retailer_id']).strip() if not pd.isna(row['retailer_id']) else '',
+                    'ikea_item_number': str(row['ikea_item_number']).strip() if not pd.isna(row['ikea_item_number']) else ''
+                }
+                valid_rows.append(valid_row)
+        
+        return {
+            "isValid": len(errors) == 0,
+            "validRows": len(valid_rows),
+            "errorCount": len(errors),
+            "errors": errors[:10],  # Limit to first 10 errors
+            "data": valid_rows
+        }
+        
+    except Exception as e:
+        logger.error(f"CSV validation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to validate CSV: {str(e)}")
+
+@router.post("/batch/upload-csv")
+async def upload_csv(file: UploadFile = File(...)):
+    """
+    Upload and validate CSV file - NO DATABASE STORAGE
+    This just validates the CSV and returns the data for frontend processing
+    """
+    try:
+        # Read file content once
+        content = await file.read()
+        csv_string = content.decode('utf-8')
+        
+        # Parse CSV
+        df = pd.read_csv(io.StringIO(csv_string))
+        
+        # Required columns
+        required_columns = [
+            'name', 'brand', 'price', 'url', 'image_urls',
+            'width_inches', 'height_inches', 'depth_inches', 'weight_kg',
+            'category', 'room_type', 'style_tags', 'placement_type',
+            'assembly_required', 'retailer_id', 'ikea_item_number'
+        ]
+        
+        # Check for required columns
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing required columns: {', '.join(missing_columns)}"
+            )
+        
+        # Validate data types and required fields
+        errors = []
+        valid_rows = []
+        
+        for index, row in df.iterrows():
+            row_errors = []
+            
+            # Check required fields
+            if pd.isna(row['name']) or str(row['name']).strip() == '':
+                row_errors.append(f"Row {index + 1}: Name is required")
+            
+            if pd.isna(row['brand']) or str(row['brand']).strip() == '':
+                row_errors.append(f"Row {index + 1}: Brand is required")
+            
+            if pd.isna(row['price']) or not isinstance(row['price'], (int, float)) or row['price'] < 0:
+                row_errors.append(f"Row {index + 1}: Price must be a positive number")
+            
+            if pd.isna(row['url']) or str(row['url']).strip() == '':
+                row_errors.append(f"Row {index + 1}: URL is required")
+            
+            # Parse image URLs
+            image_urls = []
+            if not pd.isna(row['image_urls']):
+                try:
+                    # Handle comma-separated URLs
+                    urls_str = str(row['image_urls']).strip()
+                    if urls_str:
+                        image_urls = [url.strip() for url in urls_str.split(',') if url.strip()]
+                except:
+                    row_errors.append(f"Row {index + 1}: Invalid image URLs format")
+            
+            # Parse style tags
+            style_tags = []
+            if not pd.isna(row['style_tags']):
+                try:
+                    tags_str = str(row['style_tags']).strip()
+                    if tags_str:
+                        style_tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+                except:
+                    row_errors.append(f"Row {index + 1}: Invalid style tags format")
+            
+            # Convert numeric fields
+            try:
+                price = float(row['price']) if not pd.isna(row['price']) else 0.0
+                width = float(row['width_inches']) if not pd.isna(row['width_inches']) else 0.0
+                height = float(row['height_inches']) if not pd.isna(row['height_inches']) else 0.0
+                depth = float(row['depth_inches']) if not pd.isna(row['depth_inches']) else 0.0
+                weight = float(row['weight_kg']) if not pd.isna(row['weight_kg']) else 0.0
+                assembly_required = bool(row['assembly_required']) if not pd.isna(row['assembly_required']) else False
+            except (ValueError, TypeError) as e:
+                row_errors.append(f"Row {index + 1}: Invalid numeric values - {str(e)}")
+                continue
+            
+            if row_errors:
+                errors.extend(row_errors)
+            else:
+                # Create valid row data
+                valid_row = {
+                    'name': str(row['name']).strip(),
+                    'brand': str(row['brand']).strip(),
+                    'price': price,
+                    'url': str(row['url']).strip(),
+                    'image_urls': image_urls,
+                    'width_inches': width,
+                    'height_inches': height,
+                    'depth_inches': depth,
+                    'weight_kg': weight,
+                    'category': str(row['category']).strip() if not pd.isna(row['category']) else '',
+                    'room_type': str(row['room_type']).strip() if not pd.isna(row['room_type']) else '',
+                    'style_tags': style_tags,
+                    'placement_type': str(row['placement_type']).strip() if not pd.isna(row['placement_type']) else '',
+                    'assembly_required': assembly_required,
+                    'retailer_id': str(row['retailer_id']).strip() if not pd.isna(row['retailer_id']) else '',
+                    'ikea_item_number': str(row['ikea_item_number']).strip() if not pd.isna(row['ikea_item_number']) else ''
+                }
+                valid_rows.append(valid_row)
+        
+        if errors:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"CSV validation failed: {len(errors)} errors found"
+            )
+        
+        # Return validated data WITHOUT storing in database
+        return {
+            "isValid": True,
+            "validRows": len(valid_rows),
+            "errorCount": 0,
+            "errors": [],
+            "data": valid_rows,
+            "message": f"CSV validated successfully - {len(valid_rows)} products ready for processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"CSV validation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to validate CSV: {str(e)}")
+
+@router.get("/batch/download-template")
+async def download_template():
+    """
+    Download CSV template file
+    """
+    try:
+        # Create template CSV content
+        template_data = {
+            'name': ['STOCKHOLM 2025 3-seat sofa', 'EKTORP 3-seat sofa'],
+            'brand': ['IKEA', 'IKEA'],
+            'price': [1899.0, 899.0],
+            'url': [
+                'https://www.ikea.com/us/en/p/stockholm-2025-3-seat-sofa-alhamn-beige-s69574294/',
+                'https://www.ikea.com/us/en/p/ektorp-3-seat-sofa-lofallet-beige-s69220332/'
+            ],
+            'image_urls': [
+                'https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1362835_pe955331_s5.jpg?f=xl,https://www.ikea.com/us/en/images/products/stockholm-2025-3-seat-sofa-alhamn-beige__1362835_pe955331_s6.jpg?f=xl',
+                'https://www.ikea.com/us/en/images/products/ektorp-3-seat-sofa-lofallet-beige__s69220332_pe955331_s5.jpg?f=xl,https://www.ikea.com/us/en/images/products/ektorp-3-seat-sofa-lofallet-beige__s69220332_pe955331_s6.jpg?f=xl'
+            ],
+            'width_inches': [95.625, 88.625],
+            'height_inches': [27.5, 25.625],
+            'depth_inches': [39.0, 35.0],
+            'weight_kg': [45.0, 35.0],
+            'category': ['seating', 'seating'],
+            'room_type': ['living', 'living'],
+            'style_tags': ['modern,scandinavian', 'classic,comfortable'],
+            'placement_type': ['floor', 'floor'],
+            'assembly_required': [False, True],
+            'retailer_id': ['S69574294', 'S69220332'],
+            'ikea_item_number': ['S69574294', 'S69220332']
+        }
+        
+        df = pd.DataFrame(template_data)
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_content = csv_buffer.getvalue()
+        
+        # Create response
+        response = StreamingResponse(
+            io.BytesIO(csv_content.encode('utf-8')),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=batch_products_template.csv"}
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Template download failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate template: {str(e)}")
 
 # ============================================================================
 # MONITORING AND HEALTH ENDPOINTS

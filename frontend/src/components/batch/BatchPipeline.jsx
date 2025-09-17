@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import CategoryInput from './CategoryInput';
+import DataInput from './DataInput';
 import ProductGrid from './ProductGrid';
 import BatchProcessingDashboard from './BatchProcessingDashboard';
 
@@ -9,7 +9,7 @@ const BatchPipeline = () => {
   const [pipelineData, setPipelineData] = useState({});
 
   const steps = [
-    { name: 'Category Input', component: CategoryInput },
+    { name: 'Data Input', component: DataInput },
     { name: 'Product Selection', component: ProductGrid },
     { name: 'Processing & Results', component: BatchProcessingDashboard }
   ];
@@ -95,7 +95,7 @@ const BatchPipeline = () => {
           onNext={handleNext}
           onBack={currentStep > 0 ? handleBack : undefined}
           onNewBatch={handleNewBatch}
-          products={pipelineData.selectedProducts || []}
+          products={pipelineData.csvData || pipelineData.selectedProducts || []}
         />
       </div>
 
