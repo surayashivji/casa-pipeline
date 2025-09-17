@@ -113,7 +113,7 @@ app.add_middleware(
         "http://localhost:19000",     # Expo web
         "http://localhost:19001",     # Expo dev tools
         "exp://localhost:8081",       # Expo iOS Simulator
-        "https://bec7bf4bc28d.ngrok-free.app",  # ngrok tunnel
+        "https://82401bcb63c6.ngrok-free.app",  # ngrok tunnel
     ],
     allow_credentials=True,
     allow_methods=["*"],
