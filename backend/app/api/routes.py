@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
+import httpx
+from fastapi.responses import Response
 from app.schemas.product import (
     URLDetectionRequest, URLDetectionResponse, URLType,
     ScrapeRequest, ScrapeResponse, ImageSelectionRequest, ImageSelectionResponse,
@@ -56,23 +58,26 @@ def cleanup_product_files(db: Session, product_id: str) -> int:
         models = db.query(Model3D).filter(Model3D.product_id == product_id).all()
         
         for model in models:
-            if model.file_path and os.path.exists(model.file_path):
+            # Check for local file path (if it exists)
+            local_path = getattr(model, 'file_path', None)
+            if local_path and os.path.exists(local_path):
                 try:
-                    os.remove(model.file_path)
+                    os.remove(local_path)
                     deleted_count += 1
-                    logger.info(f"Deleted 3D model file: {model.file_path}")
+                    logger.info(f"Deleted 3D model file: {local_path}")
                 except Exception as e:
-                    logger.warning(f"Could not delete {model.file_path}: {e}")
+                    logger.warning(f"Could not delete {local_path}: {e}")
             
             # Also clean up LOD files
             for lod in model.lods:
-                if lod.file_path and os.path.exists(lod.file_path):
+                lod_local_path = getattr(lod, 'file_path', None)
+                if lod_local_path and os.path.exists(lod_local_path):
                     try:
-                        os.remove(lod.file_path)
+                        os.remove(lod_local_path)
                         deleted_count += 1
-                        logger.info(f"Deleted LOD file: {lod.file_path}")
+                        logger.info(f"Deleted LOD file: {lod_local_path}")
                     except Exception as e:
-                        logger.warning(f"Could not delete {lod.file_path}: {e}")
+                        logger.warning(f"Could not delete {lod_local_path}: {e}")
         
         return deleted_count
         
@@ -1421,6 +1426,7 @@ async def get_products(
     retailer: str = None,
     include_images: bool = False,
     include_stages: bool = False,
+    include_models_3d: bool = True,
     db: Session = Depends(get_db)
 ):
     """
@@ -1506,6 +1512,32 @@ async def get_products(
                         "cost_usd": stage.cost_usd,
                         "error_message": stage.error_message
                     } for stage in stages
+                ]
+            
+            # Include 3D models if requested
+            if include_models_3d:
+                models_3d = db.query(Model3D).filter(Model3D.product_id == product.id).all()
+                product_data["models_3d"] = [
+                    {
+                        "id": str(model.id),
+                        "meshy_task_id": model.meshy_task_id,
+                        "model_name": model.model_name,
+                        "model_url": model.model_url,
+                        "thumbnail_url": model.thumbnail_url,
+                        "status": model.status,
+                        "generation_method": model.generation_method,
+                        "is_test_mode": model.is_test_mode,
+                        "format": model.format,
+                        "vertices_count": model.vertices_count,
+                        "triangles_count": model.triangles_count,
+                        "file_size_bytes": model.file_size_bytes,
+                        "generation_time_seconds": model.generation_time_seconds,
+                        "cost_usd": model.cost_usd,
+                        "is_optimized": model.is_optimized,
+                        "optimization_ratio": model.optimization_ratio,
+                        "completed_at": model.completed_at.isoformat() if model.completed_at else None,
+                        "created_at": model.created_at.isoformat() if model.created_at else None
+                    } for model in models_3d
                 ]
             
             product_list.append(product_data)
@@ -1902,7 +1934,7 @@ async def delete_product(product_id: str, db: Session = Depends(get_db)):
         if model_ids:
             # Delete LODs first
             lods_deleted = db.query(ModelLOD).filter(
-                ModelLOD.model_id.in_(model_ids)
+                ModelLOD.model_3d_id.in_(model_ids)
             ).delete(synchronize_session=False)
             
             # Delete 3D models
@@ -1982,3 +2014,22 @@ async def get_recent_logs(limit: int = 100):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get logs: {str(e)}")
+
+
+@router.get("/proxy-model")
+async def proxy_model(url: str):
+    """Proxy external model files to avoid CORS issues"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            return Response(
+                content=response.content,
+                media_type="model/gltf-binary",
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to proxy model: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch model")

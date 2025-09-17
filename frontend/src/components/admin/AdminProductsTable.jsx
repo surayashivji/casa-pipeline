@@ -52,6 +52,7 @@ const AdminProductsTable = () => {
         limit: pagination.limit,
         include_images: true,
         include_stages: true,
+        include_models_3d: true,
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(filters.brand && { retailer: filters.brand }),
         ...(filters.category && { category: filters.category }),
@@ -61,6 +62,7 @@ const AdminProductsTable = () => {
       const data = await getProducts(params);
       console.log('API Response:', data);
       console.log('Products with images:', data.products?.map(p => ({ id: p.id, name: p.name, imageCount: p.images?.length || 0 })));
+      console.log('Products with 3D models:', data.products?.map(p => ({ id: p.id, name: p.name, models3d: p.models_3d?.length || 0, models: p.models_3d })));
       setProducts(data.products || []);
       setPagination(prev => ({
         ...prev,

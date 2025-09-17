@@ -133,15 +133,6 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">Next Steps:</h4>
-            <ul className="space-y-1 text-sm text-blue-800">
-              <li>• View your model in the 3D library</li>
-              <li>• Download for use in iOS app</li>
-              <li>• Process another product</li>
-              <li>• Access from batch processing dashboard</li>
-            </ul>
-          </div>
 
           <div className="flex justify-end">
             <button

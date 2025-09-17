@@ -38,10 +38,10 @@ const ProductDetailsCell = ({ product }) => {
           {product.url ? (
             <button
               onClick={handleUrlClick}
-              className="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-full block"
+              className="text-blue-600 hover:text-blue-800 hover:underline break-all text-left block leading-tight"
               title={`Click to open: ${product.url}`}
             >
-              {product.url.length > 30 ? `${product.url.slice(0, 30)}...` : product.url}
+              {product.url}
             </button>
           ) : (
             <span className="text-gray-400">N/A</span>

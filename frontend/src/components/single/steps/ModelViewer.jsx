@@ -17,28 +17,32 @@ const ModelViewer = ({ data, onNext, onBack }) => {
           { quality: 'high', generate_lods: true }
         );
         
+        // Create proxied URLs to avoid CORS issues
+        const createProxiedUrl = (url) => 
+          url ? `http://localhost:8000/api/proxy-model?url=${encodeURIComponent(url)}` : null;
+
         // Adapt API response to component format
         const result = {
           originalModel: data.model3D,
-          optimizedModelUrl: apiResponse.model_url,
+          optimizedModelUrl: createProxiedUrl(apiResponse.model_url),
           lods: [
             {
               level: 'high',
               polygonCount: 30840,
               fileSize: '15.2 MB',
-              url: apiResponse.model_url
+              url: createProxiedUrl(apiResponse.model_url)
             },
             {
               level: 'medium',
               polygonCount: 15420,
               fileSize: '7.6 MB',
-              url: `${apiResponse.model_url.replace('.glb', '-medium.glb')}`
+              url: createProxiedUrl(`${apiResponse.model_url.replace('.glb', '-medium.glb')}`)
             },
             {
               level: 'low',
               polygonCount: 7710,
               fileSize: '3.8 MB',
-              url: `${apiResponse.model_url.replace('.glb', '-low.glb')}`
+              url: createProxiedUrl(`${apiResponse.model_url.replace('.glb', '-low.glb')}`)
             }
           ],
           compressionRatio: '75%'

@@ -132,11 +132,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
               setProgress(100);
               setCurrentStep('Model ready!');
               
+              // Create proxied URL to avoid CORS issues
+              const proxiedUrl = statusResponse.model_url 
+                ? `http://localhost:8000/api/proxy-model?url=${encodeURIComponent(statusResponse.model_url)}`
+                : null;
+
               setModel3D({
                 taskId: taskId,
                 meshyJobId: taskId,
                 status: 'completed',
-                modelUrl: statusResponse.model_url,
+                modelUrl: proxiedUrl,
                 thumbnailUrl: statusResponse.thumbnail_url,
                 processingTime: statusResponse.processing_time,
                 cost: statusResponse.cost || apiResponse.cost,
