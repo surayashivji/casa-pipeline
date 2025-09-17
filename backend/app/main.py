@@ -106,7 +106,15 @@ app.add_middleware(RequestLogger)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",      # existing web frontend
+        "http://localhost:3000",      # existing
+        "http://localhost:8081",      # Expo dev server
+        "http://localhost:19000",     # Expo web
+        "http://localhost:19001",     # Expo dev tools
+        "exp://localhost:8081",       # Expo iOS Simulator
+        "https://bec7bf4bc28d.ngrok-free.app",  # ngrok tunnel
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
