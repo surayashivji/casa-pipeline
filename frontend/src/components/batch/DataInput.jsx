@@ -278,41 +278,6 @@ const DataInput = ({ onNext, onBack }) => {
           {/* Validation Results */}
           {validationResults && getValidationStatus()}
 
-          {/* CSV Preview */}
-          {csvData && validationResults?.isValid && (
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Preview ({csvData.length} products)</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3">Name</th>
-                      <th className="text-left py-2 px-3">Brand</th>
-                      <th className="text-left py-2 px-3">Price</th>
-                      <th className="text-left py-2 px-3">Images</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {csvData.slice(0, 5).map((row, index) => (
-                      <tr key={index} className="border-b border-gray-100">
-                        <td className="py-2 px-3 truncate max-w-32">{row.name}</td>
-                        <td className="py-2 px-3">{row.brand}</td>
-                        <td className="py-2 px-3">${row.price}</td>
-                        <td className="py-2 px-3">{row.image_urls?.length || 0}</td>
-                      </tr>
-                    ))}
-                    {csvData.length > 5 && (
-                      <tr>
-                        <td colSpan="4" className="py-2 px-3 text-gray-500 text-center">
-                          ... and {csvData.length - 5} more products
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {error && (
             <p className="text-sm text-red-600">{error}</p>

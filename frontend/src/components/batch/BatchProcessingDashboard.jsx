@@ -1,21 +1,270 @@
 import { useState, useEffect } from 'react';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
-import { ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { ArrowPathIcon, EyeIcon } from '@heroicons/react/24/outline';
 // Note: startBatchProcess and getBatchStatus available for future batch API integration
 import { processBatch } from '../../shared/utils/productProcessing';
-import ProductPipelineView from '../../shared/components/ProductPipelineView';
+
+// Individual stage cell components - moved outside main component
+const DatabaseSaveCell = ({ stageData, isCurrentStage = false }) => {
+  const getStatusIcon = () => {
+    if (!stageData) return <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+      <span className="text-gray-400 text-xs">—</span>
+    </div>;
+    
+    switch (stageData.status) {
+      case 'completed':
+        return <div className="w-8 h-8 bg-green-100 rounded border border-green-200 flex items-center justify-center">
+          <span className="text-green-600 text-xs">💾</span>
+        </div>;
+      case 'processing':
+        return <div className="w-8 h-8 bg-blue-100 rounded border border-blue-200 flex items-center justify-center ring-2 ring-blue-300">
+          <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>;
+      case 'failed':
+        return <div className="w-8 h-8 bg-red-100 rounded border border-red-200 flex items-center justify-center">
+          <span className="text-red-600 text-xs">❌</span>
+        </div>;
+      default:
+        return <div className={`w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center ${isCurrentStage ? 'ring-2 ring-gray-300' : ''}`}>
+          <span className="text-gray-400 text-xs">—</span>
+        </div>;
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-1">
+      {getStatusIcon()}
+      <div className="flex items-center space-x-1">
+        <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Save Details</span>
+        {stageData?.status === 'completed' && (
+          <span className="text-green-600 text-xs">✅</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const BackgroundRemovalCell = ({ stageData, result, isCurrentStage = false }) => {
+  const getStatusIcon = () => {
+    if (!stageData) return <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+      <span className="text-gray-400 text-xs">—</span>
+    </div>;
+    
+    switch (stageData.status) {
+      case 'completed':
+        return <div className="w-16 h-16 bg-green-100 rounded border border-green-200 flex items-center justify-center overflow-hidden">
+          {result?.stages?.backgroundRemoval?.data?.processedImages?.[0]?.processed ? (
+            <img
+              src={result.stages.backgroundRemoval.data.processedImages[0].processed}
+              alt="Processed"
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="hidden w-full h-full items-center justify-center">
+            <span className="text-green-600 text-xs">✅</span>
+          </div>
+        </div>;
+      case 'processing':
+        return <div className="w-16 h-16 bg-blue-100 rounded border border-blue-200 flex items-center justify-center ring-2 ring-blue-300">
+          <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>;
+      case 'failed':
+        return <div className="w-16 h-16 bg-red-100 rounded border border-red-200 flex items-center justify-center">
+          <span className="text-red-600 text-xs">❌</span>
+        </div>;
+      default:
+        return <div className={`w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center ${isCurrentStage ? 'ring-2 ring-gray-300' : ''}`}>
+          <span className="text-gray-400 text-xs">—</span>
+        </div>;
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-1">
+      {getStatusIcon()}
+      <div className="flex items-center space-x-1">
+        <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Background</span>
+        {stageData?.status === 'completed' && (
+          <span className="text-green-600 text-xs">✅</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Model3DCell = ({ stageData, result, isCurrentStage = false }) => {
+  const getStatusIcon = () => {
+    if (!stageData) return <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+      <span className="text-gray-400 text-xs">—</span>
+    </div>;
+    
+    switch (stageData.status) {
+      case 'completed':
+        return <div className="w-16 h-16 bg-green-100 rounded border border-green-200 flex items-center justify-center overflow-hidden">
+          {result?.stages?.modelGeneration?.data?.thumbnailUrl ? (
+            <img
+              src={result.stages.modelGeneration.data.thumbnailUrl}
+              alt="3D Model"
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="hidden w-full h-full items-center justify-center">
+            <span className="text-green-600 text-xs">✅</span>
+          </div>
+        </div>;
+      case 'processing':
+        return <div className="w-16 h-16 bg-blue-100 rounded border border-blue-200 flex items-center justify-center ring-2 ring-blue-300">
+          <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>;
+      case 'failed':
+        return <div className="w-16 h-16 bg-red-100 rounded border border-red-200 flex items-center justify-center">
+          <span className="text-red-600 text-xs">❌</span>
+        </div>;
+      default:
+        return <div className={`w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center ${isCurrentStage ? 'ring-2 ring-gray-300' : ''}`}>
+          <span className="text-gray-400 text-xs">—</span>
+        </div>;
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-1">
+      {getStatusIcon()}
+      <div className="flex items-center space-x-1">
+        <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>3D Model</span>
+        {stageData?.status === 'completed' && (
+          <span className="text-green-600 text-xs">✅</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const OptimizationCell = ({ stageData, result, isCurrentStage = false }) => {
+  const getStatusIcon = () => {
+    if (!stageData) return <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+      <span className="text-gray-400 text-xs">—</span>
+    </div>;
+    
+    switch (stageData.status) {
+      case 'completed':
+        return <div className="w-8 h-8 bg-green-100 rounded border border-green-200 flex items-center justify-center">
+          <span className="text-green-600 text-xs">⚡</span>
+        </div>;
+      case 'processing':
+        return <div className="w-8 h-8 bg-blue-100 rounded border border-blue-200 flex items-center justify-center ring-2 ring-blue-300">
+          <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>;
+      case 'failed':
+        return <div className="w-8 h-8 bg-red-100 rounded border border-red-200 flex items-center justify-center">
+          <span className="text-red-600 text-xs">❌</span>
+        </div>;
+      default:
+        return <div className={`w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center ${isCurrentStage ? 'ring-2 ring-gray-300' : ''}`}>
+          <span className="text-gray-400 text-xs">—</span>
+        </div>;
+    }
+  };
+
+  const getOptimizationInfo = () => {
+    if (!result?.stages?.optimization?.data) return null;
+    
+    const data = result.stages.optimization.data;
+    return (
+      <div className="text-xs text-gray-600 mt-1">
+        <div>{data.compressionRatio ? `${(data.compressionRatio * 100).toFixed(0)}%` : 'N/A'}</div>
+        <div>{data.optimizedSize ? `${data.optimizedSize}MB` : 'N/A'}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-1">
+      {getStatusIcon()}
+      <div className="flex items-center space-x-1">
+        <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Optimize</span>
+        {stageData?.status === 'completed' && (
+          <span className="text-green-600 text-xs">✅</span>
+        )}
+      </div>
+      {getOptimizationInfo()}
+    </div>
+  );
+};
+
+const StatusCell = ({ product }) => {
+  const getStatusInfo = () => {
+    switch (product.overallStatus) {
+      case 'completed':
+        return {
+          text: 'Completed',
+          color: 'text-green-600',
+          bgColor: 'bg-green-100',
+          borderColor: 'border-green-200',
+          icon: '✅'
+        };
+      case 'processing':
+        return {
+          text: 'Processing',
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-100',
+          borderColor: 'border-blue-200',
+          icon: '🔄'
+        };
+      case 'failed':
+        return {
+          text: 'Failed',
+          color: 'text-red-600',
+          bgColor: 'bg-red-100',
+          borderColor: 'border-red-200',
+          icon: '❌'
+        };
+      default:
+        return {
+          text: 'Pending',
+          color: 'text-gray-600',
+          bgColor: 'bg-gray-100',
+          borderColor: 'border-gray-200',
+          icon: '—'
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+
+  return (
+    <div className="flex flex-col items-center space-y-1">
+      <div className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color} ${statusInfo.bgColor} ${statusInfo.borderColor} border`}>
+        <span className="mr-1">{statusInfo.icon}</span>
+        {statusInfo.text}
+      </div>
+      {product.overallStatus === 'completed' && product.endTime && product.startTime && (
+        <div className="text-xs text-gray-500">
+          {((product.endTime - product.startTime) / 1000).toFixed(1)}s
+        </div>
+      )}
+    </div>
+  );
+};
 
 const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
   const [processingStatus, setProcessingStatus] = useState([]);
   const [processedResults, setProcessedResults] = useState({});
-  const [expandedProducts, setExpandedProducts] = useState([]);
   const [currentProgress, setCurrentProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(true);
   const [startTime, setStartTime] = useState(Date.now());
 
   // Processing stages for batch processing (CSV data already uploaded)
   const stages = [
-    { key: 'databaseSave', name: 'Save to DB', icon: '💾', description: 'Saving details to Database' },
+    { key: 'databaseSave', name: 'Save Details', icon: '💾', description: 'Saving product details to database' },
     { key: 'backgroundRemoval', name: 'BG Removal', icon: '✂️', description: 'Background Removed' },
     { key: 'modelGeneration', name: '3D Gen', icon: '🎲', description: '3D Model' },
     { key: 'optimization', name: 'Optimize', icon: '⚡', description: 'Optimization' }
@@ -28,6 +277,10 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
     const initialStatus = products.map((product, index) => ({
       id: product.id || `batch-product-${index}`,
       name: product.name,
+      brand: product.brand,
+      images: product.images || product.image_urls, // Handle both formats
+      price: product.price,
+      dimensions: product.dimensions,
       stages: stages.reduce((acc, stage) => ({
         ...acc,
         [stage.key]: { status: 'pending', progress: 0 }
@@ -103,7 +356,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
               const product = newStatus[productIndex];
               product.endTime = Date.now();
               
-              if (result.status === 'success') {
+              if (result.overallStatus === 'completed') {
                 Object.keys(product.stages).forEach(stageKey => {
                   product.stages[stageKey] = { status: 'completed', progress: 100 };
                 });
@@ -140,31 +393,12 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
     }, 500);
   }, [products]);
 
-  const completedCount = processingStatus.filter(p => p.overallStatus === 'completed').length;
+  const completedCount = processingStatus.filter(p => p.stages.databaseSave?.status === 'completed').length;
   const failedCount = processingStatus.filter(p => p.overallStatus === 'failed').length;
   const processingCount = processingStatus.filter(p => p.overallStatus === 'processing').length;
   const totalCost = Object.values(processedResults).reduce((sum, r) => sum + (r.cost || 0), 0);
   const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
-  const toggleProductExpansion = (productId) => {
-    setExpandedProducts(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
-  };
-
-  const getStageIcon = (status, isCurrentStage) => {
-    if (status === 'completed') {
-      return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
-    } else if (status === 'failed') {
-      return <XCircleIcon className="h-4 w-4 text-red-600" />;
-    } else if (status === 'processing' || isCurrentStage) {
-      return <div className="animate-spin h-4 w-4 border-2 border-primary-600 border-t-transparent rounded-full" />;
-    } else {
-      return <ClockIcon className="h-4 w-4 text-gray-400" />;
-    }
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -181,9 +415,9 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
             <p className="text-sm text-gray-500">
               Elapsed Time: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
             </p>
-            <p className="text-sm text-gray-500">
+            {/* <p className="text-sm text-gray-500">
               Est. Cost: ${totalCost.toFixed(2)}
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -217,114 +451,113 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
           />
         </div>
 
-        {/* Processing Table with Expandable Rows */}
-        <div className="space-y-2">
-          {processingStatus.map((product) => {
-            const isExpanded = expandedProducts.includes(product.id);
-            const result = processedResults[product.id];
-            
-            return (
-              <div key={product.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                {/* Main Row */}
-                <div 
-                  className={`px-4 py-3 cursor-pointer transition-colors ${
-                    product.overallStatus === 'processing' ? 'bg-primary-50 hover:bg-primary-100' :
-                    product.overallStatus === 'completed' ? 'bg-green-50 hover:bg-green-100' :
-                    product.overallStatus === 'failed' ? 'bg-red-50 hover:bg-red-100' :
-                    'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                  onClick={() => toggleProductExpansion(product.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    {/* Product Info */}
-                    <div className="flex items-center space-x-3 flex-1">
-                      <button className="text-gray-500 hover:text-gray-700">
-                        {isExpanded ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-                      </button>
-                      
-                      <div>
-                        <h4 className="font-medium text-gray-900">{product.name}</h4>
-                        <p className="text-sm text-gray-500">
-                          {product.overallStatus === 'processing' && product.currentStage 
-                            ? `Currently: ${stages.find(s => s.key === product.currentStage)?.name || product.currentStage}`
-                            : product.overallStatus === 'completed' 
-                            ? `Completed in ${((product.endTime - product.startTime) / 1000).toFixed(1)}s`
-                            : product.overallStatus === 'failed' 
-                            ? 'Processing failed'
-                            : product.overallStatus === 'pending' 
-                            ? 'Waiting to start'
-                            : ''
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Stage Status with Descriptive Text */}
-                    <div className="flex items-center space-x-8">
-                      {stages.map(stage => {
-                        const stageData = product.stages[stage.key];
-                        const isCurrentStage = product.currentStage === stage.key;
-                        
-                        return (
-                          <div key={stage.key} className="flex flex-col items-center min-w-0">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="text-sm">{stage.icon}</span>
-                              {getStageIcon(stageData.status, isCurrentStage)}
-                            </div>
-                            <span className="text-xs text-gray-600 text-center leading-tight max-w-16">
-                              {stage.description}
-                            </span>
+        {/* Processing Table - Admin Dashboard Style */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Product
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Save Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Background Removal
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    3D Model
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Optimization
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {processingStatus.map((product) => {
+                  const result = processedResults[product.id];
+                  
+                  return (
+                    <tr key={product.id} className="hover:bg-gray-50">
+                      {/* Product Info */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
+                            {product.images && product.images.length > 0 ? (
+                              <img
+                                src={product.images[0]}
+                                alt={product.name}
+                                className="max-w-full max-h-full object-contain"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-gray-400 text-xs">No Image</span>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Actions - Only for completed items */}
-                    <div className="flex items-center space-x-4 ml-6">
-                      {product.overallStatus === 'failed' && (
-                        <button className="text-gray-600 hover:text-gray-700 font-medium text-sm">
-                          Retry
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Expanded Details */}
-                {isExpanded && result && (
-                  <div className="px-6 py-4 bg-white border-t border-gray-200">
-                    <div className="space-y-4">
-                      {/* Pipeline View */}
-                      <ProductPipelineView 
-                        productResult={result}
-                        layout="grid"
-                        showStages={['databaseSave', 'backgroundRemoval', 'modelGeneration', 'optimization']}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 truncate max-w-48">
+                              {product.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {product.brand || 'Unknown Brand'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      {/* Database Save Stage */}
+                      <td className="px-6 py-4">
+                        <DatabaseSaveCell 
+                          stageData={product.stages.databaseSave} 
+                          isCurrentStage={product.currentStage === 'databaseSave'}
+                        />
+                      </td>
+                      
+                      {/* Background Removal Stage */}
+                      <td className="px-6 py-4">
+                        <BackgroundRemovalCell 
+                          stageData={product.stages.backgroundRemoval} 
+                          result={result}
+                          isCurrentStage={product.currentStage === 'backgroundRemoval'}
+                        />
+                      </td>
+                      
+                      {/* 3D Model Stage */}
+                      <td className="px-6 py-4">
+                        <Model3DCell 
+                          stageData={product.stages.modelGeneration} 
+                          result={result}
+                          isCurrentStage={product.currentStage === 'modelGeneration'}
+                        />
+                      </td>
+                      
+                      {/* Optimization Stage */}
+                      <td className="px-6 py-4">
+                        <OptimizationCell 
+                          stageData={product.stages.optimization} 
+                          result={result}
+                          isCurrentStage={product.currentStage === 'optimization'}
+                        />
+                      </td>
+                      
+                      {/* Overall Status */}
+                      <td className="px-6 py-4">
+                        <StatusCell product={product} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-between pt-4 border-t border-gray-200">
-          <button
-            onClick={onNewBatch}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center space-x-2"
-          >
-            <ArrowPathIcon className="h-5 w-5" />
-            <span>New Batch</span>
-          </button>
-          <button 
-            className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center space-x-2 disabled:opacity-50"
-            disabled={completedCount === 0}
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            <span>Download All ({completedCount})</span>
-          </button>
-        </div>
       </div>
     </div>
   );

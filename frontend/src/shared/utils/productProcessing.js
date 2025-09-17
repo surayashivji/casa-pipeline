@@ -182,7 +182,7 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
     // Stage 1: Save to Database (CSV data already validated, now save to DB)
     onProgress({ stage: 'databaseSave', progress: 10 });
     console.log('Saving product to database:', product.name);
-    // Mock database save for now - in real implementation, this would call the backend
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
     result.stages.databaseSave = {
       status: 'complete',
       data: {
@@ -195,6 +195,7 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
     // Stage 2: Background Removal
     onProgress({ stage: 'backgroundRemoval', progress: 35 });
     console.log('Processing background removal for:', product.name);
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
     // Mock background removal for Phase 2 development
     const mockProcessedImages = (product.images || []).map((img, index) => ({
       original: img,
@@ -214,6 +215,7 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
     // Stage 3: 3D Model Generation
     onProgress({ stage: 'modelGeneration', progress: 70 });
     console.log('Generating 3D model for:', product.name);
+    await new Promise(resolve => setTimeout(resolve, 4000)); // 4 second delay
     // Mock 3D generation for Phase 2 development
     result.stages.modelGeneration = {
       status: 'complete',
@@ -230,6 +232,20 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
     // Stage 4: Optimization
     onProgress({ stage: 'optimization', progress: 90 });
     console.log('Optimizing model for:', product.name);
+    
+    // Show loading progress during optimization
+    await new Promise(resolve => setTimeout(resolve, 500));
+    onProgress({ stage: 'optimization', progress: 95 });
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    onProgress({ stage: 'optimization', progress: 98 });
+    
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 2 second total delay
+    
+    // Mark optimization as complete with 100% progress
+    onProgress({ stage: 'optimization', progress: 100 });
+    console.log('Optimization completed for:', product.name);
+    
     // Mock optimization for Phase 2 development
     result.stages.optimization = {
       status: 'complete',
@@ -248,6 +264,7 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
     result.totalProcessingTime = (result.endTime - result.startTime) / 1000;
     result.totalCost = 0.65; // Sum of all stage costs
 
+    console.log('Product processing completed:', product.name);
     onProgress({ stage: 'completed', progress: 100 });
     return result;
 
