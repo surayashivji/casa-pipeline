@@ -7,7 +7,6 @@ import BackgroundRemoval from './steps/BackgroundRemoval';
 import ApprovalInterface from './steps/ApprovalInterface';
 import ModelGeneration from './steps/ModelGeneration';
 import ModelViewer from './steps/ModelViewer';
-import SaveConfirmation from './steps/SaveConfirmation';
 
 const SinglePipeline = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -20,8 +19,7 @@ const SinglePipeline = () => {
     { name: 'Background Removal', component: BackgroundRemoval },
     { name: 'Select Images for 3D Model', component: ApprovalInterface },
     { name: '3D Generation', component: ModelGeneration },
-    { name: 'Model Viewer', component: ModelViewer },
-    { name: 'Save Confirmation', component: SaveConfirmation }
+    { name: 'Model Viewer', component: ModelViewer }
   ];
 
   const handleNext = (data) => {
