@@ -153,7 +153,7 @@ export const processProduct = async (product, options = {}) => {
     // Mark which stage failed
     const failedStage = error.message.includes('image quality') ? 'modelGeneration' : 
                        error.message.includes('background') ? 'backgroundRemoval' : 
-                       'scraping';
+                       'databaseSave';
     
     if (!result.stages[failedStage]) {
       result.stages[failedStage] = {};
@@ -164,6 +164,100 @@ export const processProduct = async (product, options = {}) => {
 
   onProgress({ stage: 'complete', progress: 100 });
   return result;
+};
+
+/**
+ * Process a single product in batch mode (CSV data already uploaded)
+ */
+export const processBatchProduct = async (product, onProgress, context = {}) => {
+  const result = {
+    ...product,
+    id: product.id || `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    overallStatus: 'processing',
+    stages: {},
+    startTime: Date.now()
+  };
+
+  try {
+    // Stage 1: Save to Database (CSV data already validated, now save to DB)
+    onProgress({ stage: 'databaseSave', progress: 10 });
+    console.log('Saving product to database:', product.name);
+    // Mock database save for now - in real implementation, this would call the backend
+    result.stages.databaseSave = {
+      status: 'complete',
+      data: {
+        productId: result.id,
+        savedAt: new Date().toISOString(),
+        status: 'saved'
+      }
+    };
+
+    // Stage 2: Background Removal
+    onProgress({ stage: 'backgroundRemoval', progress: 35 });
+    console.log('Processing background removal for:', product.name);
+    // Mock background removal for Phase 2 development
+    const mockProcessedImages = (product.images || []).map((img, index) => ({
+      original: img,
+      processed: img,
+      processed_url: img,
+      mask_url: `https://example.com/mask-${index}.png`
+    }));
+    result.stages.backgroundRemoval = {
+      status: 'complete',
+      data: {
+        processedImages: mockProcessedImages,
+        processingTime: 2.5,
+        cost: 0.10
+      }
+    };
+
+    // Stage 3: 3D Model Generation
+    onProgress({ stage: 'modelGeneration', progress: 70 });
+    console.log('Generating 3D model for:', product.name);
+    // Mock 3D generation for Phase 2 development
+    result.stages.modelGeneration = {
+      status: 'complete',
+      data: {
+        modelUrl: `https://example.com/models/${result.id}.glb`,
+        thumbnailUrl: `https://example.com/thumbnails/${result.id}.jpg`,
+        vertices: 15420,
+        triangles: 30840,
+        processingTime: 45.2,
+        cost: 0.50
+      }
+    };
+
+    // Stage 4: Optimization
+    onProgress({ stage: 'optimization', progress: 90 });
+    console.log('Optimizing model for:', product.name);
+    // Mock optimization for Phase 2 development
+    result.stages.optimization = {
+      status: 'complete',
+      data: {
+        originalSize: 2.5,
+        optimizedSize: 1.2,
+        compressionRatio: 0.48,
+        processingTime: 8.1,
+        cost: 0.05
+      }
+    };
+
+    // Complete
+    result.overallStatus = 'completed';
+    result.endTime = Date.now();
+    result.totalProcessingTime = (result.endTime - result.startTime) / 1000;
+    result.totalCost = 0.65; // Sum of all stage costs
+
+    onProgress({ stage: 'completed', progress: 100 });
+    return result;
+
+  } catch (error) {
+    console.error(`Error processing product ${product.name}:`, error);
+    result.overallStatus = 'failed';
+    result.error = error.message;
+    result.endTime = Date.now();
+    return result;
+  }
 };
 
 /**
@@ -187,17 +281,14 @@ export const processBatch = async (products, options = {}) => {
       total: products.length
     });
 
-    const result = await processProduct(product, {
-      autoApprove: true,
-      onProgress: (productProgress) => {
-        onProgress({
-          ...productProgress,
-          batchProgress: ((i + (productProgress.progress / 100)) / products.length) * 100,
-          currentProduct: product.name,
-          currentIndex: i,
-          total: products.length
-        });
-      }
+    const result = await processBatchProduct(product, (productProgress) => {
+      onProgress({
+        ...productProgress,
+        batchProgress: ((i + (productProgress.progress / 100)) / products.length) * 100,
+        currentProduct: product.name,
+        currentIndex: i,
+        total: products.length
+      });
     });
 
     results.push(result);

@@ -13,22 +13,20 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [startTime, setStartTime] = useState(Date.now());
 
-  // Processing stages that match our shared logic
+  // Processing stages for batch processing (CSV data already uploaded)
   const stages = [
-    { key: 'scraping', name: 'Scraping', icon: '📊', description: 'Scraped Image' },
-    { key: 'imageSelection', name: 'Images', icon: '🖼️', description: 'Selected Images' },
+    { key: 'databaseSave', name: 'Save to DB', icon: '💾', description: 'Saving details to Database' },
     { key: 'backgroundRemoval', name: 'BG Removal', icon: '✂️', description: 'Background Removed' },
     { key: 'modelGeneration', name: '3D Gen', icon: '🎲', description: '3D Model' },
-    { key: 'optimization', name: 'Optimize', icon: '⚡', description: 'Optimization' },
-    { key: 'saving', name: 'Save', icon: '💾', description: 'Saved to Database' }
+    { key: 'optimization', name: 'Optimize', icon: '⚡', description: 'Optimization' }
   ];
 
   useEffect(() => {
     if (!products || products.length === 0) return;
 
     // Initialize processing status for each product
-    const initialStatus = products.map(product => ({
-      id: product.id,
+    const initialStatus = products.map((product, index) => ({
+      id: product.id || `batch-product-${index}`,
       name: product.name,
       stages: stages.reduce((acc, stage) => ({
         ...acc,
@@ -111,7 +109,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                 });
                 product.overallStatus = 'completed';
               } else {
-                const failedStage = result.error?.includes('image quality') ? 'modelGeneration' : 'scraping';
+                const failedStage = result.error?.includes('image quality') ? 'modelGeneration' : 'databaseSave';
                 Object.keys(product.stages).forEach(stageKey => {
                   const stageIndex = stages.findIndex(s => s.key === stageKey);
                   const failedIndex = stages.findIndex(s => s.key === failedStage);
@@ -247,17 +245,15 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                       <div>
                         <h4 className="font-medium text-gray-900">{product.name}</h4>
                         <p className="text-sm text-gray-500">
-                          {product.overallStatus === 'processing' && product.currentStage && 
-                            `Currently: ${stages.find(s => s.key === product.currentStage)?.name || product.currentStage}`
-                          }
-                          {product.overallStatus === 'completed' && 
-                            `Completed in ${((product.endTime - product.startTime) / 1000).toFixed(1)}s`
-                          }
-                          {product.overallStatus === 'failed' && 
-                            'Processing failed'
-                          }
-                          {product.overallStatus === 'pending' && 
-                            'Waiting to start'
+                          {product.overallStatus === 'processing' && product.currentStage 
+                            ? `Currently: ${stages.find(s => s.key === product.currentStage)?.name || product.currentStage}`
+                            : product.overallStatus === 'completed' 
+                            ? `Completed in ${((product.endTime - product.startTime) / 1000).toFixed(1)}s`
+                            : product.overallStatus === 'failed' 
+                            ? 'Processing failed'
+                            : product.overallStatus === 'pending' 
+                            ? 'Waiting to start'
+                            : ''
                           }
                         </p>
                       </div>
@@ -302,7 +298,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
                       <ProductPipelineView 
                         productResult={result}
                         layout="grid"
-                        showStages={['imageSelection', 'backgroundRemoval', 'modelGeneration', 'optimization']}
+                        showStages={['databaseSave', 'backgroundRemoval', 'modelGeneration', 'optimization']}
                       />
                     </div>
                   </div>

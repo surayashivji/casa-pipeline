@@ -6,7 +6,7 @@ import PipelineStageDisplay from './PipelineStageDisplay';
  */
 const ProductPipelineView = ({ 
   productResult, 
-  showStages = ['scraping', 'imageSelection', 'backgroundRemoval', 'modelGeneration'],
+  showStages = ['databaseSave', 'backgroundRemoval', 'modelGeneration', 'optimization'],
   layout = 'grid' // 'grid' | 'vertical' | 'horizontal'
 }) => {
   if (!productResult || !productResult.stages) {

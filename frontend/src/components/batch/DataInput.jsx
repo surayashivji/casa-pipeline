@@ -11,15 +11,11 @@ const DataInput = ({ onNext, onBack }) => {
 
 
   const handleFileChange = (e) => {
-    console.log('File change event triggered', e.target.files);
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      console.log('File selected:', selectedFile.name, selectedFile.size);
       setFile(selectedFile);
       setError('');
       validateCsvFile(selectedFile);
-    } else {
-      console.log('No file selected');
     }
   };
 
@@ -53,7 +49,6 @@ const DataInput = ({ onNext, onBack }) => {
   const validateCsvFile = async (file) => {
     if (!file) return;
 
-    console.log('Starting CSV validation for file:', file.name);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -61,15 +56,12 @@ const DataInput = ({ onNext, onBack }) => {
       setIsValidating(true);
       setError('');
 
-      console.log('Making request to /api/batch/validate-csv-data');
       const response = await fetch('/api/batch/validate-csv-data', {
         method: 'POST',
         body: formData,
       });
 
-      console.log('Response status:', response.status);
       const result = await response.json();
-      console.log('Response data:', result);
 
       if (response.ok) {
         setCsvData(result.data);
@@ -78,11 +70,6 @@ const DataInput = ({ onNext, onBack }) => {
           validRows: result.validRows,
           errorCount: result.errorCount,
           errors: result.errors
-        });
-        console.log('Validation successful:', {
-          isValid: result.isValid,
-          validRows: result.validRows,
-          errorCount: result.errorCount
         });
       } else {
         console.error('Validation failed:', result);
@@ -337,12 +324,6 @@ const DataInput = ({ onNext, onBack }) => {
             disabled={isValidating || !file || !validationResults?.isValid}
             className="px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             onClick={() => {
-              console.log('Button clicked - Current state:', {
-                isValidating,
-                file: file?.name,
-                validationResults,
-                csvDataLength: csvData?.length
-              });
             }}
           >
             {isValidating ? (

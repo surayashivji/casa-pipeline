@@ -13,6 +13,11 @@ const PipelineStageDisplay = ({ stage, stageData, compact = false }) => {
       icon: '📊',
       displayFields: ['name', 'price', 'brand', 'category']
     },
+    databaseSave: {
+      title: 'Saved to Database',
+      icon: '💾',
+      displayFields: ['productId', 'savedAt', 'status']
+    },
     imageSelection: {
       title: 'Selected Image',
       icon: '🖼️',

@@ -124,11 +124,9 @@ const ProductGrid = ({ products, onNext, onBack }) => {
                           src={product.images[0]}
                           alt={product.name}
                           className="max-w-full max-h-full object-contain"
-                          onError={(e) => {
-                            console.log('Image failed to load:', product.images[0]);
-                            console.log('Error:', e);
-                            e.target.style.display = 'none';
-                          }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -163,7 +161,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
         </div>
 
         {/* Summary Stats */}
-        <div className="bg-gray-50 rounded-lg p-4">
+        {/* <div className="bg-gray-50 rounded-lg p-4">
           <div className="flex justify-between items-center text-sm">
             <div>
               <span className="font-medium text-gray-900">Estimated Processing Time:</span>
@@ -174,7 +172,7 @@ const ProductGrid = ({ products, onNext, onBack }) => {
               <span className="ml-2 text-gray-600">${(selectedProducts.length * 0.50).toFixed(2)}</span>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Action Buttons */}
         <div className="flex justify-between">
