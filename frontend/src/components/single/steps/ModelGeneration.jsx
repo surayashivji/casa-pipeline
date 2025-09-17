@@ -5,7 +5,7 @@ import { createError, ERROR_TYPES, ERROR_SEVERITY, handleApiError } from '../../
 import ErrorMessage from '../../../shared/components/ErrorMessage';
 import Model3DViewer from '../../shared/Model3DViewer';
 
-console.log('Imported functions:', { generate3DModel, checkModelStatus });
+// console.log('Imported functions:', { generate3DModel, checkModelStatus });
 
 
 const ModelGeneration = ({ data, onNext, onBack }) => {
@@ -25,6 +25,16 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
     const generateAndPollModel = async () => {
       // Early return if cancelled
       if (isCancelled) return;
+
+      // DEBUG: Check what images we have
+      console.log('=== IMAGE DATA CHECK ===');
+      console.log('data.processedImages:', data.processedImages);
+      
+      if (data.processedImages && data.processedImages.length > 0) {
+        console.log('First image object:', data.processedImages[0]);
+        console.log('Original URL:', data.processedImages[0].original);
+        console.log('Processed URL:', data.processedImages[0].processed);
+      }
       
       console.log('=== STARTING GENERATION ===');
       console.log('Data:', data);
@@ -55,7 +65,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         const apiResponse = await handleApiError(
           () => generate3DModel(
             data.product.id,
-            data.processedImages.map(img => img.processed),
+            data.processedImages.map(img => img.original),
             { quality: 'high', auto_approve: true }
           ),
           2,

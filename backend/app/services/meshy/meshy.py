@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 class MeshyService:
     def __init__(self):
         
-        self.api_key = 'msy_dummy_api_key_for_test_mode_12345678'
+        # self.api_key = 'msy_dummy_api_key_for_test_mode_12345678'
+        self.api_key = 'msy_DNG0ZY0fT4hbR2d7IrdN9DP4NgW8OqHgUkJD'
         self.base_url = "https://api.meshy.ai"
         
         if not self.api_key:

@@ -922,23 +922,24 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
         
-        # Use provided image URLs
-        # image_urls = request.image_urls
-        # if not image_urls:
-        #     raise HTTPException(status_code=400, detail="No images provided")
+        # Check test mode from environment
+        test_mode = os.getenv("MESHY_TEST_MODE", "true").lower() == "true"
         
-        # logger.info(f"Creating 3D model for {product.name} with {len(image_urls)} images")
-        
-        # if 'dummy_api_key' in self.api_key:
-        logger.info("Using test API key - replacing with test images")
-        image_urls = [
-            "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800",
-            "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800"
-        ]
-        logger.info(f"Creating 3D model for {len(image_urls)} images")
+        if test_mode:
+            logger.info("🧪 TEST MODE: Replacing with test images")
+            logger.info(f"(Ignoring {len(request.image_urls)} provided images)")
+            image_urls = [
+                "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800",
+                "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800"
+            ]
+        else:
+            logger.info("🚀 PRODUCTION MODE: Using real product images")
+            image_urls = request.image_urls
+            if not image_urls:
+                raise HTTPException(status_code=400, detail="No images provided")
+            logger.info(f"Creating 3D model for {product.name} with {len(image_urls)} images")
 
-
-        # Call Meshy API (with test key for now)
+        # Call Meshy API
         result = meshy.create_task(image_urls)
         
         if not result["success"]:
@@ -953,8 +954,9 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
             product_id=request.product_id,
             meshy_task_id=task_id,
             status="processing",
+            s3_url="",  # Will be updated when complete
             generation_method="meshy",
-            is_test_mode=True  # We're using test API key
+            is_test_mode=test_mode
         )
         db.add(model_3d)
         
@@ -978,12 +980,16 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
         })
         
         # Return same format as before (so frontend doesn't need changes)
+        # Test mode is faster, production takes longer
+        estimated_time = 30 if test_mode else 180  # 30 seconds test, 3 minutes production
+        cost = 0.00 if test_mode else 0.50  # Free for test, charge for production
+        
         return Generate3DResponse(
             product_id=request.product_id,
             task_id=task_id,
             status="processing",
-            estimated_completion=datetime.now() + timedelta(seconds=30),  # Test mode is fast
-            cost=0.00  # Test API key = free
+            estimated_completion=datetime.now() + timedelta(seconds=estimated_time),
+            cost=cost
         )
         
     except HTTPException:
@@ -991,7 +997,7 @@ async def generate_3d_model(request: Generate3DRequest, db: Session = Depends(ge
     except Exception as e:
         logger.error(f"3D generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+        
 @router.get("/model-status/{task_id}", response_model=ModelStatusResponse)
 async def get_model_status(task_id: str, db: Session = Depends(get_db)):
     """
