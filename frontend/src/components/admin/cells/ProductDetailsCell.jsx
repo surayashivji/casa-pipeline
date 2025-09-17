@@ -5,6 +5,55 @@ const ProductDetailsCell = ({ product }) => {
     }
   };
 
+  // Get processing status
+  const getProcessingStatus = () => {
+    const stages = Array.isArray(product?.stages) ? product.stages : [];
+    const completedStages = stages.filter(s => s?.status === 'completed');
+    const failedStages = stages.filter(s => s?.status === 'failed');
+    const processingStages = stages.filter(s => s?.status === 'processing');
+    
+    if (failedStages.length > 0) {
+      return { 
+        status: 'Failed', 
+        color: 'text-red-600',
+        icon: '❌'
+      };
+    }
+    if (processingStages.length > 0) {
+      return { 
+        status: 'Processing', 
+        color: 'text-blue-600',
+        icon: '🔄'
+      };
+    }
+    
+    // Complete if all 5 database stages are completed
+    if (completedStages.length >= 5) {
+      return { 
+        status: 'Complete', 
+        color: 'text-green-600',
+        icon: '✅'
+      };
+    }
+    
+    // Incomplete if some stages are completed but not all 5
+    if (completedStages.length > 0) {
+      return { 
+        status: 'Incomplete', 
+        color: 'text-yellow-600',
+        icon: '⚠️'
+      };
+    }
+    
+    return { 
+      status: 'Pending', 
+      color: 'text-yellow-600',
+      icon: '⏸️'
+    };
+  };
+
+  const statusInfo = getProcessingStatus();
+
   return (
     <div className="w-48 p-4">
       <div className="space-y-1 text-xs">
@@ -92,6 +141,15 @@ const ProductDetailsCell = ({ product }) => {
         <div>
           <span className="text-gray-500">Assembly: </span>
           <span className="text-gray-900">{product.assembly_required ? 'Yes' : 'No'}</span>
+        </div>
+        
+        {/* Processing Status */}
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <span className="text-gray-500">Status: </span>
+          <span className={`${statusInfo.color} font-medium flex items-center gap-1`}>
+            <span>{statusInfo.icon}</span>
+            {statusInfo.status}
+          </span>
         </div>
       </div>
     </div>

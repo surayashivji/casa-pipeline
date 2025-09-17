@@ -52,14 +52,14 @@ const Model3DCell = ({ product }) => {
         ) : (
           <span>3D Model</span>
         )}
-        <span className={`text-lg ${
+        {/* <span className={`text-lg ${
           modelStatus.color === 'green' ? 'text-green-600' :
           modelStatus.color === 'yellow' ? 'text-yellow-600' :
           modelStatus.color === 'red' ? 'text-red-600' :
           'text-gray-600'
         }`}>
           {modelStatus.icon}
-        </span>
+        </span> */}
       </div>
       
       {primaryModel ? (

@@ -8,7 +8,6 @@ import ProductDetailsCell from './cells/ProductDetailsCell';
 import OriginalImagesCell from './cells/OriginalImagesCell';
 import ProcessedImagesCell from './cells/ProcessedImagesCell';
 import Model3DCell from './cells/Model3DCell';
-import StatusProgressCell from './cells/StatusProgressCell';
 import PriceCell from './cells/PriceCell';
 import ActionsCell from './cells/ActionsCell';
 import { deleteProduct } from '../../shared/services/apiService';
@@ -212,9 +211,6 @@ const AdminProductsTable = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-48">
                   3D Model
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-40">
-                  Status/Progress
-                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider w-48">
                   Details
                 </th>
@@ -249,9 +245,6 @@ const AdminProductsTable = () => {
                   </td>
                   <td className="px-0 py-0">
                     <Model3DCell product={product} />
-                  </td>
-                  <td className="px-0 py-0">
-                    <StatusProgressCell product={product} />
                   </td>
                   <td className="px-0 py-0">
                     <ProductDetailsCell product={product} />

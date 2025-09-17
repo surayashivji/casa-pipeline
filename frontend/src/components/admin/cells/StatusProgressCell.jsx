@@ -1,9 +1,26 @@
 const StatusProgressCell = ({ product }) => {
+  // Define the expected pipeline stages in order
+  const EXPECTED_STAGES = [
+    'scraping',
+    'image_selection', 
+    'background_removal',
+    'image_approval',
+    '3d_generation',
+    'optimization',
+    'saving'
+  ];
+  
   // Ensure stages is always an array
   const stages = Array.isArray(product?.stages) ? product.stages : [];
   const completedStages = stages.filter(s => s?.status === 'completed');
   const failedStages = stages.filter(s => s?.status === 'failed');
   const processingStages = stages.filter(s => s?.status === 'processing');
+  
+  // Calculate progress against expected total stages
+  const totalExpectedStages = EXPECTED_STAGES.length;
+  const completedExpectedStages = EXPECTED_STAGES.filter(stageName => 
+    stages.some(stage => stage.stage_name === stageName && stage.status === 'completed')
+  ).length;
   
   const getOverallStatus = () => {
     if (failedStages.length > 0) {
@@ -42,26 +59,51 @@ const StatusProgressCell = ({ product }) => {
 
   const statusInfo = getOverallStatus();
 
+  const getStageIcon = (stage) => {
+    switch (stage.status) {
+      case 'completed': return '✅';
+      case 'processing': return '🔄';
+      case 'failed': return '❌';
+      default: return '⏸️';
+    }
+  };
+
+  const getStageColor = (stage) => {
+    switch (stage.status) {
+      case 'completed': return 'text-gray-900';
+      case 'processing': return 'text-blue-600';
+      case 'failed': return 'text-red-600';
+      default: return 'text-gray-500';
+    }
+  };
+
+  const formatStageName = (stageName) => {
+    return stageName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   return (
-    <div className="w-40 p-4">
+    <div className="w-48 p-4">
       <div className="space-y-2">
-        {/* Overall Status */}
-        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-${statusInfo.color}-100 text-${statusInfo.color}-800`}>
-          <span className="mr-1">{statusInfo.icon}</span>
-          {statusInfo.text}
-        </div>
-        
-        {/* Failed Stage */}
-        {statusInfo.failedStage && (
-          <div className="text-xs text-red-600">
-            Failed: {statusInfo.failedStage}
-          </div>
-        )}
-        
-        {/* Current Stage */}
-        {statusInfo.currentStage && (
-          <div className="text-xs text-blue-600">
-            Processing: {statusInfo.currentStage}
+        {/* Individual Steps - Show only stages that exist in database */}
+        {stages.length > 0 && (
+          <div className="space-y-1">
+            {stages
+              .sort((a, b) => a.stage_order - b.stage_order)
+              .map((stage, index) => (
+                <div key={stage.id || index} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-1">
+                    <span className="text-xs">{getStageIcon(stage)}</span>
+                    <span className={`${getStageColor(stage)} truncate`} title={formatStageName(stage.stage_name)}>
+                      {formatStageName(stage.stage_name)}
+                    </span>
+                  </div>
+                  {stage.status === 'processing' && (
+                    <div className="animate-pulse text-blue-500 text-xs">●</div>
+                  )}
+                </div>
+              ))}
           </div>
         )}
         

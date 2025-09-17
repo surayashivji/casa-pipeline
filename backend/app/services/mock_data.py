@@ -326,7 +326,7 @@ class MockDataService:
             "image_selection": 2,
             "background_removal": 3,
             "image_approval": 4,
-            "model_generation": 5,
+            "3d_generation": 5,
             "optimization": 6,
             "saving": 7
         }
@@ -340,7 +340,7 @@ class MockDataService:
             "image_selection": 0.0,
             "background_removal": 0.15,
             "image_approval": 0.0,
-            "model_generation": 0.50,
+            "3d_generation": 0.50,
             "optimization": 0.10,
             "saving": 0.01
         }
