@@ -254,7 +254,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">3D Model Generation</h2>
+          <h2 className="text-xl font-bold text-gray-900">3D Model Generation</h2>
           <p className="mt-2 text-gray-600">
             Generate a 3D model from processed images
           </p>
@@ -281,7 +281,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">3D Model Generation</h2>
+        <h2 className="text-xl font-bold text-gray-900">3D Model Generation</h2>
         <p className="mt-2 text-gray-600">
           Creating a 3D model using Meshy AI
         </p>
@@ -349,7 +349,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
                 )}
               </div>
               <div className="flex-1 space-y-3">
-                <h3 className="text-lg font-medium text-gray-900">Model Generated Successfully!</h3>
+                <h3 className="text-lg font-medium text-gray-900">3D Model Generated Successfully!</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Model ID:</span>

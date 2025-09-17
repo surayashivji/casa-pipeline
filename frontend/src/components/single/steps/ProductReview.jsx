@@ -17,7 +17,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Review Product Data</h2>
+        <h2 className="text-xl font-bold text-gray-900">Review Product Data</h2>
         <p className="mt-2 text-gray-600">
           Verify the scraped product information before proceeding with image selection
         </p>

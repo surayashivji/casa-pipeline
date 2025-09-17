@@ -63,7 +63,7 @@ const URLInput = ({ onNext }) => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Enter Product URL</h2>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Enter Product URL</h2>
         <p className="mt-2 text-gray-600">
           Paste the URL of a furniture product from a supported retailer
         </p>

@@ -71,9 +71,9 @@ const BackgroundRemoval = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Background Removal</h2>
+        <h2 className="text-xl font-bold text-gray-900">Background Removal</h2>
         <p className="mt-2 text-gray-600">
-          Removing backgrounds from selected images using AI
+          Removing backgrounds from selected images
         </p>
       </div>
 

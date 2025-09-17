@@ -73,7 +73,7 @@ const ModelViewer = ({ data, onNext, onBack }) => {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">3D Model Viewer</h2>
+          <h2 className="text-xl font-bold text-gray-900">3D Model Viewer</h2>
           <p className="mt-2 text-gray-600">
             Optimizing and preparing your model for viewing
           </p>
@@ -94,7 +94,7 @@ const ModelViewer = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">3D Model Viewer</h2>
+        <h2 className="text-xl font-bold text-gray-900">3D Model Viewer</h2>
         <p className="mt-2 text-gray-600">
           Review and download your generated 3D model
         </p>

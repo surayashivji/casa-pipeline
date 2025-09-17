@@ -53,7 +53,7 @@ const SaveConfirmation = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Save to Database</h2>
+        <h2 className="text-xl font-bold text-gray-900">Save to Database</h2>
         <p className="mt-2 text-gray-600">
           Save your 3D model and product data to the pipeline database
         </p>

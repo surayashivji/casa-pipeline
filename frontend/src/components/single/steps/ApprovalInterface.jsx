@@ -31,13 +31,13 @@ const ApprovalInterface = ({ data, onNext, onBack }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Approve Processed Images</h2>
+        <h2 className="text-xl font-bold text-gray-900">Approve Processed Images</h2>
         <p className="mt-2 text-gray-600">
           Review and approve the background-removed images for 3D generation
         </p>
-        <p className="mt-1 text-sm text-gray-500">
+        {/* <p className="mt-1 text-sm text-gray-500">
           These images have had their backgrounds removed using AI. Select which ones to use for 3D model generation.
-        </p>
+        </p> */}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
