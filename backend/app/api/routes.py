@@ -1041,6 +1041,14 @@ async def get_model_status(task_id: str, db: Session = Depends(get_db)):
                 # Update model record
                 model_3d.status = "completed"
                 model_3d.model_url = status_data.get("model_urls", {}).get("glb")
+
+                model_3d.model_urls = status_data.get("model_urls", {})
+
+                # Save texture URL
+                texture_urls = status_data.get("texture_urls", [])
+                if texture_urls and len(texture_urls) > 0:
+                    model_3d.base_texture_url = texture_urls[0].get("base_color", "")
+
                 model_3d.thumbnail_url = status_data.get("thumbnail_url")
                 model_3d.completed_at = datetime.now()
                 
@@ -1084,9 +1092,11 @@ async def get_model_status(task_id: str, db: Session = Depends(get_db)):
             status=status,
             progress=progress,
             model_url=status_data.get("model_urls", {}).get("glb") if status == "completed" else None,
+            model_urls=status_data.get("model_urls", {}) if status == "completed" else None,  # NEW
+            texture_url=model_3d.base_texture_url if model_3d and status == "completed" else None,  # NEW
             thumbnail_url=status_data.get("thumbnail_url") if status == "completed" else None,
-            processing_time=30.0 if status == "completed" else None,  # Test mode is fast
-            cost=0.00,  # Test mode is free
+            processing_time=30.0 if status == "completed" else None,
+            cost=0.00,
             model_quality=0.95 if status == "completed" else None,
             lods_available=["high"] if status == "completed" else None
         )
@@ -1523,6 +1533,8 @@ async def get_products(
                         "meshy_task_id": model.meshy_task_id,
                         "model_name": model.model_name,
                         "model_url": model.model_url,
+                        "model_urls": model.model_urls,
+                        "base_texture_url": model.base_texture_url,
                         "thumbnail_url": model.thumbnail_url,
                         "status": model.status,
                         "generation_method": model.generation_method,

@@ -119,7 +119,7 @@ const ProductReview = ({ data, onNext, onBack }) => {
             `}
           >
             <CheckIcon className={`h-5 w-5 ${isApproved ? 'text-green-600' : 'text-gray-400'}`} />
-            <span>{isApproved ? 'Approved' : 'Approve Product Data'}</span>
+            <span>{isApproved ? 'Approved' : 'Approve Info'}</span>
           </button>
           
           <button

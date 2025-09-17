@@ -43,9 +43,9 @@ const SinglePipeline = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
             Single Product Pipeline
           </h1>
-          <div className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
+          {/* <div className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
             Step {currentStep + 1} of {steps.length}
-          </div>
+          </div> */}
         </div>
         
         {/* Enhanced Step Indicators */}

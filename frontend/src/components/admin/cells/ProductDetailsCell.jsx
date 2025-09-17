@@ -1,7 +1,28 @@
+import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+
 const ProductDetailsCell = ({ product }) => {
   const handleUrlClick = () => {
     if (product.url) {
       window.open(product.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleIdClick = async () => {
+    if (product.id) {
+      try {
+        await navigator.clipboard.writeText(product.id);
+        // You could add a toast notification here if you have one
+        console.log('Product ID copied to clipboard:', product.id);
+      } catch (err) {
+        console.error('Failed to copy ID:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = product.id;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
     }
   };
 
@@ -59,10 +80,17 @@ const ProductDetailsCell = ({ product }) => {
       <div className="space-y-1 text-xs">
         {/* Product ID */}
         <div className="mb-2">
-          <span className="text-gray-500">ID: </span>
-          <span className="text-gray-900 font-mono text-xs" title={product.id || 'N/A'}>
-            {product.id ? product.id.slice(-12) : 'N/A'}
-          </span>
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-gray-500">ID</span>
+            <ClipboardDocumentIcon className="w-3 h-3 text-gray-400" />
+          </div>
+          <button
+            onClick={handleIdClick}
+            className="text-gray-900 font-mono text-xs hover:text-blue-600 hover:underline cursor-pointer transition-colors duration-200 break-all text-left w-full"
+            title={`Click to copy: ${product.id || 'N/A'}`}
+          >
+            {product.id || 'N/A'}
+          </button>
         </div>
 
         {/* Article Number */}
