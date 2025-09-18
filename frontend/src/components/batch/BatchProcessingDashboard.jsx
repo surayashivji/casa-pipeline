@@ -13,6 +13,7 @@ const DatabaseSaveCell = ({ stageData, isCurrentStage = false }) => {
     
     switch (stageData.status) {
       case 'completed':
+      case 'complete': // Handle both 'completed' and 'complete'
         return <div className="w-8 h-8 bg-green-100 rounded border border-green-200 flex items-center justify-center">
           <span className="text-green-600 text-xs">💾</span>
         </div>;
@@ -36,7 +37,7 @@ const DatabaseSaveCell = ({ stageData, isCurrentStage = false }) => {
       {getStatusIcon()}
       <div className="flex items-center space-x-1">
         <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Save Details</span>
-        {stageData?.status === 'completed' && (
+        {(stageData?.status === 'completed' || stageData?.status === 'complete') && (
           <span className="text-green-600 text-xs">✅</span>
         )}
       </div>
@@ -52,6 +53,7 @@ const BackgroundRemovalCell = ({ stageData, result, isCurrentStage = false }) =>
     
     switch (stageData.status) {
       case 'completed':
+      case 'complete': // Handle both 'completed' and 'complete'
         return <div className="w-16 h-16 bg-green-100 rounded border border-green-200 flex items-center justify-center overflow-hidden">
           {result?.stages?.backgroundRemoval?.data?.processedImages?.[0]?.processed ? (
             <img
@@ -88,7 +90,7 @@ const BackgroundRemovalCell = ({ stageData, result, isCurrentStage = false }) =>
       {getStatusIcon()}
       <div className="flex items-center space-x-1">
         <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Background</span>
-        {stageData?.status === 'completed' && (
+        {(stageData?.status === 'completed' || stageData?.status === 'complete') && (
           <span className="text-green-600 text-xs">✅</span>
         )}
       </div>
@@ -104,6 +106,7 @@ const Model3DCell = ({ stageData, result, isCurrentStage = false }) => {
     
     switch (stageData.status) {
       case 'completed':
+      case 'complete': // Handle both 'completed' and 'complete'
         return <div className="w-16 h-16 bg-green-100 rounded border border-green-200 flex items-center justify-center overflow-hidden">
           {result?.stages?.modelGeneration?.data?.thumbnailUrl ? (
             <img
@@ -140,7 +143,7 @@ const Model3DCell = ({ stageData, result, isCurrentStage = false }) => {
       {getStatusIcon()}
       <div className="flex items-center space-x-1">
         <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>3D Model</span>
-        {stageData?.status === 'completed' && (
+        {(stageData?.status === 'completed' || stageData?.status === 'complete') && (
           <span className="text-green-600 text-xs">✅</span>
         )}
       </div>
@@ -156,6 +159,7 @@ const OptimizationCell = ({ stageData, result, isCurrentStage = false }) => {
     
     switch (stageData.status) {
       case 'completed':
+      case 'complete': // Handle both 'completed' and 'complete'
         return <div className="w-8 h-8 bg-green-100 rounded border border-green-200 flex items-center justify-center">
           <span className="text-green-600 text-xs">⚡</span>
         </div>;
@@ -191,7 +195,7 @@ const OptimizationCell = ({ stageData, result, isCurrentStage = false }) => {
       {getStatusIcon()}
       <div className="flex items-center space-x-1">
         <span className={`text-xs ${isCurrentStage ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>Optimize</span>
-        {stageData?.status === 'completed' && (
+        {(stageData?.status === 'completed' || stageData?.status === 'complete') && (
           <span className="text-green-600 text-xs">✅</span>
         )}
       </div>
@@ -342,41 +346,51 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
           const originalProductId = products.find(p => p.name === result.name)?.id;
           const resultId = originalProductId || result.id;
           
+          console.log('onProductComplete called for:', result.name, 'with stages:', Object.keys(result.stages || {}));
+          
           setProcessedResults(prev => ({
             ...prev,
             [resultId]: result
           }));
           
-          // Update status
+          // Update status - handle both intermediate and final results
           setProcessingStatus(prev => {
             const newStatus = [...prev];
-            const productIndex = products.findIndex(p => p.id === result.id);
+            // Try to match by ID first, then by name as fallback
+            const productIndex = products.findIndex(p => p.id === result.id || p.name === result.name);
+            
+            console.log('Product matching - result.id:', result.id, 'result.name:', result.name, 'found index:', productIndex);
             
             if (productIndex !== -1 && newStatus[productIndex]) {
               const product = newStatus[productIndex];
-              product.endTime = Date.now();
               
-              if (result.overallStatus === 'completed') {
-                Object.keys(product.stages).forEach(stageKey => {
-                  product.stages[stageKey] = { status: 'completed', progress: 100 };
-                });
-                product.overallStatus = 'completed';
-              } else {
-                const failedStage = result.error?.includes('image quality') ? 'modelGeneration' : 'databaseSave';
-                Object.keys(product.stages).forEach(stageKey => {
-                  const stageIndex = stages.findIndex(s => s.key === stageKey);
-                  const failedIndex = stages.findIndex(s => s.key === failedStage);
-                  
-                  if (stageIndex < failedIndex) {
-                    product.stages[stageKey] = { status: 'completed', progress: 100 };
-                  } else if (stageKey === failedStage) {
-                    product.stages[stageKey] = { status: 'failed', progress: 0, error: result.error };
+              // Update individual stage statuses from the result
+              if (result.stages) {
+                Object.keys(result.stages).forEach(stageKey => {
+                  const stageResult = result.stages[stageKey];
+                  if (stageResult && stageResult.status) {
+                    product.stages[stageKey] = {
+                      status: stageResult.status,
+                      progress: stageResult.status === 'complete' ? 100 : 0,
+                      data: stageResult.data
+                    };
                   }
                 });
-                product.overallStatus = 'failed';
               }
               
-              product.currentStage = null;
+              // Update overall status
+              if (result.overallStatus === 'completed') {
+                product.overallStatus = 'completed';
+                product.endTime = Date.now();
+                product.currentStage = null;
+              } else if (result.overallStatus === 'failed') {
+                product.overallStatus = 'failed';
+                product.endTime = Date.now();
+                product.currentStage = null;
+              } else if (result.overallStatus === 'processing') {
+                product.overallStatus = 'processing';
+                // Keep current stage active
+              }
             }
             
             return newStatus;

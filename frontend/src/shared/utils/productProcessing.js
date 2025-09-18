@@ -166,113 +166,87 @@ export const processProduct = async (product, options = {}) => {
   return result;
 };
 
+
 /**
- * Process a single product in batch mode (CSV data already uploaded)
+ * Process remaining stages for a single product (simplified)
  */
-export const processBatchProduct = async (product, onProgress, context = {}) => {
+const processRemainingStages = async (product, onProgress, onProductComplete) => {
   const result = {
-    ...product,
-    id: product.id || `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: product.id,
+    name: product.name,
     overallStatus: 'processing',
-    stages: {},
+    stages: {
+      databaseSave: {
+        status: 'complete',
+        data: {
+          productId: product.id,
+          savedAt: new Date().toISOString(),
+          status: 'saved',
+          databaseId: product.id
+        }
+      }
+    },
     startTime: Date.now()
   };
 
   try {
-    // Stage 1: Save to Database (CSV data already validated, now save to DB)
-    onProgress({ stage: 'databaseSave', progress: 10 });
-    console.log('Saving product to database:', product.name);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-    result.stages.databaseSave = {
-      status: 'complete',
-      data: {
-        productId: result.id,
-        savedAt: new Date().toISOString(),
-        status: 'saved'
-      }
-    };
-
-    // Stage 2: Background Removal
-    onProgress({ stage: 'backgroundRemoval', progress: 35 });
+    // Stage 1: Background Removal
     console.log('Processing background removal for:', product.name);
-    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
-    // Mock background removal for Phase 2 development
-    const mockProcessedImages = (product.images || []).map((img, index) => ({
-      original: img,
-      processed: img,
-      processed_url: img,
-      mask_url: `https://example.com/mask-${index}.png`
-    }));
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+    
     result.stages.backgroundRemoval = {
       status: 'complete',
       data: {
-        processedImages: mockProcessedImages,
-        processingTime: 2.5,
-        cost: 0.10
+        processedImageUrl: `https://example.com/processed-${product.id}.png`,
+        originalImageCount: product.images?.length || 1,
+        processedImageCount: product.images?.length || 1
       }
     };
+    
+    onProductComplete(result); // Update UI immediately
 
-    // Stage 3: 3D Model Generation
-    onProgress({ stage: 'modelGeneration', progress: 70 });
+    // Stage 2: 3D Model Generation
     console.log('Generating 3D model for:', product.name);
-    await new Promise(resolve => setTimeout(resolve, 4000)); // 4 second delay
-    // Mock 3D generation for Phase 2 development
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+    
     result.stages.modelGeneration = {
       status: 'complete',
       data: {
-        modelUrl: `https://example.com/models/${result.id}.glb`,
-        thumbnailUrl: `https://example.com/thumbnails/${result.id}.jpg`,
-        vertices: 15420,
-        triangles: 30840,
-        processingTime: 45.2,
-        cost: 0.50
+        modelUrl: `https://example.com/model-${product.id}.glb`,
+        modelFormat: 'glb',
+        vertices: 12543,
+        faces: 8421,
+        textures: 3
       }
     };
+    
+    onProductComplete(result); // Update UI immediately
 
-    // Stage 4: Optimization
-    onProgress({ stage: 'optimization', progress: 90 });
+    // Stage 3: Optimization
     console.log('Optimizing model for:', product.name);
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
     
-    // Show loading progress during optimization
-    await new Promise(resolve => setTimeout(resolve, 500));
-    onProgress({ stage: 'optimization', progress: 95 });
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-    onProgress({ stage: 'optimization', progress: 98 });
-    
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 2 second total delay
-    
-    // Mark optimization as complete with 100% progress
-    onProgress({ stage: 'optimization', progress: 100 });
-    console.log('Optimization completed for:', product.name);
-    
-    // Mock optimization for Phase 2 development
     result.stages.optimization = {
       status: 'complete',
       data: {
-        originalSize: 2.5,
-        optimizedSize: 1.2,
-        compressionRatio: 0.48,
-        processingTime: 8.1,
-        cost: 0.05
+        optimizedModelUrl: `https://example.com/optimized-${product.id}.glb`,
+        originalSize: '2.3MB',
+        optimizedSize: '1.1MB',
+        compressionRatio: '52%'
       }
     };
 
-    // Complete
     result.overallStatus = 'completed';
     result.endTime = Date.now();
-    result.totalProcessingTime = (result.endTime - result.startTime) / 1000;
-    result.totalCost = 0.65; // Sum of all stage costs
-
-    console.log('Product processing completed:', product.name);
-    onProgress({ stage: 'completed', progress: 100 });
+    onProductComplete(result); // Final update
     return result;
-
+    
   } catch (error) {
-    console.error(`Error processing product ${product.name}:`, error);
+    console.error(`Processing failed for ${product.name}:`, error);
     result.overallStatus = 'failed';
     result.error = error.message;
     result.endTime = Date.now();
+    onProductComplete(result); // Update UI even on failure
     return result;
   }
 };
@@ -282,35 +256,100 @@ export const processBatchProduct = async (product, onProgress, context = {}) => 
  */
 export const processBatch = async (products, options = {}) => {
   const {
-    parallel = false, // In Phase 1, we'll process sequentially
     onProgress = () => {},
     onProductComplete = () => {}
   } = options;
 
-  const results = [];
-  
-  for (let i = 0; i < products.length; i++) {
-    const product = products[i];
+  try {
+    // Step 1: Batch save all products to database (all at once)
+    console.log('Starting batch save of all products to database...');
     onProgress({ 
-      batchProgress: (i / products.length) * 100,
-      currentProduct: product.name,
-      currentIndex: i,
+      batchProgress: 5,
+      currentProduct: 'Saving all products to database...',
+      currentIndex: -1,
       total: products.length
     });
-
-    const result = await processBatchProduct(product, (productProgress) => {
-      onProgress({
-        ...productProgress,
-        batchProgress: ((i + (productProgress.progress / 100)) / products.length) * 100,
+    
+    const saveResponse = await fetch('/api/batch/save-products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        products: products
+      })
+    });
+    
+    if (!saveResponse.ok) {
+      throw new Error(`Failed to save products: ${saveResponse.statusText}`);
+    }
+    
+    const saveResult = await saveResponse.json();
+    console.log(`Successfully saved ${saveResult.total_saved} products to database`);
+    
+    // Step 2: Create product ID mapping
+    const savedProductsMap = {};
+    saveResult.products.forEach(savedProduct => {
+      const originalProduct = products.find(p => p.name === savedProduct.name);
+      if (originalProduct) {
+        savedProductsMap[originalProduct.name] = savedProduct.id;
+      }
+    });
+    
+    // Step 3: Immediately update UI for ALL products with database save complete
+    console.log('Updating UI for batch save completion...');
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      const updatedProduct = {
+        ...product,
+        id: savedProductsMap[product.name] || product.id
+      };
+      
+      const result = {
+        id: updatedProduct.id,
+        name: updatedProduct.name,
+        overallStatus: 'processing',
+        stages: {
+          databaseSave: {
+            status: 'complete',
+            data: {
+              productId: updatedProduct.id,
+              savedAt: new Date().toISOString(),
+              status: 'saved',
+              databaseId: updatedProduct.id
+            }
+          }
+        },
+        startTime: Date.now()
+      };
+      
+      // Immediately update UI for this product
+      onProductComplete(result);
+    }
+    
+    // Step 4: Process remaining stages for each product (simplified)
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      const updatedProduct = {
+        ...product,
+        id: savedProductsMap[product.name] || product.id
+      };
+      
+      onProgress({ 
+        batchProgress: 15 + ((i / products.length) * 85),
         currentProduct: product.name,
         currentIndex: i,
         total: products.length
       });
-    });
 
-    results.push(result);
-    onProductComplete(result);
+      // Process remaining stages with immediate UI updates
+      await processRemainingStages(updatedProduct, onProgress, onProductComplete);
+    }
+
+    return [];
+    
+  } catch (error) {
+    console.error('Batch processing failed:', error);
+    throw error;
   }
-
-  return results;
 };

@@ -2152,6 +2152,106 @@ async def download_template():
         logger.error(f"Template download failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate template: {str(e)}")
 
+@router.post("/batch/save-products")
+async def save_batch_products(request: dict, db: Session = Depends(get_db)):
+    """
+    Save selected products from CSV to database for batch processing
+    This is the "Save Details" stage in batch processing - saves ALL products at once
+    """
+    try:
+        products_data = request.get('products', [])
+        if not products_data:
+            raise HTTPException(status_code=400, detail="No products provided")
+        
+        # Cap at 50 products per batch
+        if len(products_data) > 50:
+            raise HTTPException(status_code=400, detail="Maximum 50 products per batch")
+        
+        logger.info(f"Starting batch save of {len(products_data)} products to database")
+        
+        # Use the same logic as single product processing but in batch
+        saved_products = _create_batch_products_in_db(products_data, db)
+        
+        logger.info(f"Successfully saved {len(saved_products)} products to database")
+        
+        return {
+            "success": True,
+            "message": f"Successfully saved {len(saved_products)} products to database",
+            "products": saved_products,
+            "total_saved": len(saved_products),
+            "batch_size": len(products_data)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch product saving failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save products: {str(e)}")
+
+def _create_batch_products_in_db(products_data: list, db: Session) -> list:
+    """Create multiple products in database for batch processing - reuses single product logic"""
+    try:
+        saved_products = []
+        
+        # Process all products in a single transaction
+        for product_data in products_data:
+            try:
+                # Convert CSV data to scraped data format (same as single product processing)
+                scraped_data = {
+                    'name': product_data['name'],
+                    'brand': product_data.get('brand', ''),
+                    'description': product_data.get('description', ''),
+                    'price': product_data.get('price', 0.0),
+                    'dimensions': {
+                        'width': product_data.get('width_inches', 0.0),
+                        'height': product_data.get('height_inches', 0.0),
+                        'depth': product_data.get('depth_inches', 0.0)
+                    },
+                    'weight': product_data.get('weight_kg', 0.0),
+                    'category': product_data.get('category', ''),
+                    'room_type': product_data.get('room_type', ''),
+                    'style_tags': product_data.get('style_tags', []),
+                    'placement_type': product_data.get('placement_type', ''),
+                    'assembly_required': product_data.get('assembly_required', False),
+                    'retailer_id': product_data.get('retailer_id', ''),
+                    'ikea_item_number': product_data.get('ikea_item_number', ''),
+                    'images': product_data.get('image_urls', [])
+                }
+                
+                # Reuse the existing single product logic
+                product = _create_product_in_db(scraped_data, product_data.get('url', ''), db)
+                
+                # Update the stage name for batch processing
+                stage = db.query(ProcessingStage).filter(
+                    ProcessingStage.product_id == product.id,
+                    ProcessingStage.stage_name == "scraping"
+                ).first()
+                
+                if stage:
+                    stage.stage_name = "database_save"
+                    stage.input_data = {"source": "csv_batch", "product_data": product_data}
+                    stage.stage_metadata = {"batch_processing": True}
+                    db.commit()
+                
+                saved_products.append({
+                    'id': str(product.id),
+                    'name': product.name,
+                    'brand': product.brand,
+                    'price': product.price,
+                    'url': product.url
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to save product {product_data.get('name', 'Unknown')}: {str(e)}")
+                continue
+        
+        return saved_products
+        
+    except Exception as e:
+        logger.error(f"Failed to create batch products in database: {str(e)}")
+        db.rollback()
+        raise
+
 # ============================================================================
 # MONITORING AND HEALTH ENDPOINTS
 # ============================================================================
