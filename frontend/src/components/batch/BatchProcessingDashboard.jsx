@@ -263,7 +263,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
   const [processingStatus, setProcessingStatus] = useState([]);
   const [processedResults, setProcessedResults] = useState({});
   const [currentProgress, setCurrentProgress] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
 
   // Processing stages for batch processing (CSV data already uploaded)
@@ -276,6 +276,9 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
 
   useEffect(() => {
     if (!products || products.length === 0) return;
+    
+    // Prevent multiple executions
+    if (isProcessing) return;
 
     // Initialize processing status for each product
     const initialStatus = products.map((product, index) => ({
@@ -297,6 +300,7 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
     
     setProcessingStatus(initialStatus);
     setStartTime(Date.now());
+    setIsProcessing(true);
 
     const runBatchProcessing = async () => {
       const results = await processBatch(products, {
@@ -402,9 +406,14 @@ const BatchProcessingDashboard = ({ products = [], onNewBatch }) => {
     };
 
     // Start processing after a short delay
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       runBatchProcessing();
     }, 500);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [products]);
 
   const completedCount = processingStatus.filter(p => p.stages.databaseSave?.status === 'completed').length;

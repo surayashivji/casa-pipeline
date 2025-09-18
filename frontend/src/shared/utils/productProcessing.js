@@ -190,22 +190,10 @@ const processRemainingStages = async (product, onProgress, onProductComplete) =>
   };
 
   try {
-    // Stage 1: Background Removal
-    console.log('Processing background removal for:', product.name);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
-    
-    result.stages.backgroundRemoval = {
-      status: 'complete',
-      data: {
-        processedImageUrl: `https://example.com/processed-${product.id}.png`,
-        originalImageCount: product.images?.length || 1,
-        processedImageCount: product.images?.length || 1
-      }
-    };
-    
-    onProductComplete(result); // Update UI immediately
+    // Background removal is already handled in batch processing, skip it here
+    console.log('Skipping background removal for:', product.name, '(already processed in batch)');
 
-    // Stage 2: 3D Model Generation
+    // Stage 1: 3D Model Generation
     console.log('Generating 3D model for:', product.name);
     await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
     
@@ -222,7 +210,7 @@ const processRemainingStages = async (product, onProgress, onProductComplete) =>
     
     onProductComplete(result); // Update UI immediately
 
-    // Stage 3: Optimization
+    // Stage 2: Optimization
     console.log('Optimizing model for:', product.name);
     await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
     
@@ -327,7 +315,84 @@ export const processBatch = async (products, options = {}) => {
       onProductComplete(result);
     }
     
-    // Step 4: Process remaining stages for each product (simplified)
+    // Step 4: Batch Background Removal (all products at once)
+    console.log('Starting batch background removal...');
+    onProgress({ 
+      batchProgress: 20,
+      currentProduct: 'Processing background removal for all products...',
+      currentIndex: -1,
+      total: products.length
+    });
+    
+    try {
+      const bgRemovalResponse = await fetch('/api/batch/background-removal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: products.map(product => ({
+            ...product,
+            id: savedProductsMap[product.name] || product.id
+          }))
+        })
+      });
+      
+      if (!bgRemovalResponse.ok) {
+        throw new Error(`Failed to process background removal: ${bgRemovalResponse.statusText}`);
+      }
+      
+      const bgRemovalResult = await bgRemovalResponse.json();
+      console.log(`Successfully processed background removal: ${bgRemovalResult.successful_images}/${bgRemovalResult.total_images} images`);
+      
+      // Update UI for all products with background removal complete
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+        const updatedProduct = {
+          ...product,
+          id: savedProductsMap[product.name] || product.id
+        };
+        
+        // Find the corresponding result from the API response
+        const productResult = bgRemovalResult.products.find(p => p.id === updatedProduct.id);
+        const successCount = productResult ? productResult.success_count : 0;
+        const totalCount = productResult ? productResult.total_count : (product.images?.length || 1);
+        
+        const result = {
+          id: updatedProduct.id,
+          name: updatedProduct.name,
+          overallStatus: 'processing',
+          stages: {
+            databaseSave: {
+              status: 'complete',
+              data: {
+                productId: updatedProduct.id,
+                savedAt: new Date().toISOString(),
+                status: 'saved',
+                databaseId: updatedProduct.id
+              }
+            },
+            backgroundRemoval: {
+              status: 'complete',
+              data: {
+                processedImageUrl: `http://localhost:8000/static/processed/${updatedProduct.id}_0_processed.png`,
+                originalImageCount: product.images?.length || 1,
+                processedImageCount: successCount
+              }
+            }
+          },
+          startTime: Date.now()
+        };
+        
+        onProductComplete(result);
+      }
+      
+    } catch (error) {
+      console.error('Batch background removal failed:', error);
+      // Continue with mock processing if real API fails
+    }
+    
+    // Step 5: Process remaining stages for each product (3D Model, Optimization)
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
       const updatedProduct = {
@@ -336,7 +401,7 @@ export const processBatch = async (products, options = {}) => {
       };
       
       onProgress({ 
-        batchProgress: 15 + ((i / products.length) * 85),
+        batchProgress: 30 + ((i / products.length) * 70),
         currentProduct: product.name,
         currentIndex: i,
         total: products.length

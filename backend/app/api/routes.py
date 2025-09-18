@@ -2152,6 +2152,135 @@ async def download_template():
         logger.error(f"Template download failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate template: {str(e)}")
 
+@router.post("/batch/background-removal")
+async def batch_background_removal(request: dict, db: Session = Depends(get_db)):
+    """
+    Process background removal for multiple products in parallel
+    This is the "Background Removal" stage in batch processing
+    """
+    try:
+        products_data = request.get('products', [])
+        if not products_data:
+            raise HTTPException(status_code=400, detail="No products provided")
+        
+        # Cap at 50 products per batch
+        if len(products_data) > 50:
+            raise HTTPException(status_code=400, detail="Maximum 50 products per batch")
+        
+        
+        logger.info(f"Starting batch background removal for {len(products_data)} products")
+        
+        # Import here to avoid circular imports
+        from app.services.background_removal.manager import BackgroundRemovalManager
+        
+        # Process all products' images in parallel
+        bg_manager = BackgroundRemovalManager()
+        result = await bg_manager.process_batch_images(products_data)
+        
+        # Update database with results (only for products that exist in database)
+        updated_products = []
+        for product_result in result['product_results']:
+            product_id = product_result['product_id']
+            
+            # Try to find product in database
+            try:
+                product = db.query(Product).filter(Product.id == product_id).first()
+                if product:
+                    product.status = "background_removed"
+                    product.updated_at = datetime.now()
+                    
+                    # Save processed images to ProductImage table (same as single product processing)
+                    for image_result in product_result['images']:
+                        if image_result.get('success') and image_result.get('processed_url'):
+                            # Get actual file size from local file
+                            file_size = 0
+                            if image_result.get('local_path') and os.path.exists(image_result['local_path']):
+                                file_size = os.path.getsize(image_result['local_path'])
+                            
+                            # Create ProductImage record for processed image
+                            processed_image = ProductImage(
+                                product_id=product.id,
+                                image_type='processed',
+                                image_order=image_result.get('image_order', 0),
+                                s3_url=image_result.get('processed_url'),
+                                local_path=image_result.get('local_path'),
+                                file_size_bytes=file_size,
+                                width_pixels=1400,  # REMBG outputs 1400x1400
+                                height_pixels=1400,
+                                format='PNG',
+                                is_primary=(image_result.get('image_order', 0) == 0)  # First image is primary
+                            )
+                            
+                            db.add(processed_image)
+                            logger.info(f"Saved processed image for product {product.id}, order {image_result.get('image_order', 0)}")
+                    
+                    # Create processing stage record
+                    stage = ProcessingStage(
+                        product_id=product.id,
+                        stage_name="background_removal",
+                        stage_order=2,
+                        status="completed",
+                        started_at=datetime.now(),
+                        completed_at=datetime.now(),
+                        processing_time_seconds=0.0,  # Could calculate actual time
+                        cost_usd=0.0,
+                        input_data={"source": "batch_processing", "product_data": product_result},
+                        output_data={
+                            "images_processed": product_result['success_count'],
+                            "total_images": product_result['total_count'],
+                            "success_rate": (product_result['success_count'] / product_result['total_count']) * 100 if product_result['total_count'] > 0 else 0
+                        },
+                        stage_metadata={"batch_processing": True}
+                    )
+                    db.add(stage)
+                    
+                    updated_products.append({
+                        'id': str(product.id),
+                        'name': product.name,
+                        'success_count': product_result['success_count'],
+                        'total_count': product_result['total_count']
+                    })
+                else:
+                    # Product not in database (test mode), just add to results
+                    updated_products.append({
+                        'id': product_id,
+                        'name': product_result['product_name'],
+                        'success_count': product_result['success_count'],
+                        'total_count': product_result['total_count']
+                    })
+            except Exception as e:
+                logger.warning(f"Could not update product {product_id} in database: {str(e)}")
+                # Still add to results even if database update fails
+                updated_products.append({
+                    'id': product_id,
+                    'name': product_result['product_name'],
+                    'success_count': product_result['success_count'],
+                    'total_count': product_result['total_count']
+                })
+        
+        try:
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Could not commit database changes: {str(e)}")
+            # Continue even if database commit fails
+        
+        logger.info(f"Successfully processed background removal for {len(updated_products)} products")
+        
+        return {
+            "success": True,
+            "message": f"Successfully processed background removal for {len(updated_products)} products",
+            "total_images": result['total_images'],
+            "successful_images": result['successful_images'],
+            "success_rate": result['success_rate'],
+            "products": updated_products
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch background removal failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process background removal: {str(e)}")
+
 @router.post("/batch/save-products")
 async def save_batch_products(request: dict, db: Session = Depends(get_db)):
     """

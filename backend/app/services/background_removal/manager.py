@@ -277,6 +277,102 @@ class BackgroundRemovalManager:
                 return provider
         return None
     
+    async def process_batch_images(
+        self, 
+        products_data: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Process multiple products' images for background removal in parallel
+        
+        Args:
+            products_data: List of product data with image URLs
+            
+        Returns:
+            Dict with batch processing results
+        """
+        logger.info(f"Starting batch background removal for {len(products_data)} products")
+        
+        # Collect all images to process
+        all_images = []
+        for product in products_data:
+            product_id = product.get('id')
+            image_urls = product.get('image_urls', [])
+            
+            for i, image_url in enumerate(image_urls):
+                all_images.append({
+                    'product_id': product_id,
+                    'image_url': image_url,
+                    'image_order': i,
+                    'product_name': product.get('name', 'Unknown')
+                })
+        
+        logger.info(f"Processing {len(all_images)} images across {len(products_data)} products")
+        
+        # Process all images in parallel
+        tasks = []
+        for image_data in all_images:
+            task = self.process_image(
+                image_data['image_url'],
+                image_data['product_id'],
+                image_data['image_order']
+            )
+            tasks.append((image_data, task))
+        
+        # Wait for all tasks to complete
+        results = []
+        for image_data, task in tasks:
+            try:
+                result = await task
+                result['product_name'] = image_data['product_name']
+                result['product_id'] = image_data['product_id']  # Ensure product_id is in result
+                result['image_order'] = image_data['image_order']  # Ensure image_order is in result
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Failed to process image for {image_data['product_name']}: {str(e)}")
+                results.append({
+                    'success': False,
+                    'error': str(e),
+                    'product_id': image_data['product_id'],
+                    'image_order': image_data['image_order'],
+                    'product_name': image_data['product_name'],
+                    'original_url': image_data['image_url'],
+                    'processed_url': None
+                })
+        
+        # Group results by product
+        product_results = {}
+        for result in results:
+            product_id = result['product_id']
+            if product_id not in product_results:
+                product_results[product_id] = {
+                    'product_id': product_id,
+                    'product_name': result['product_name'],
+                    'images': [],
+                    'success_count': 0,
+                    'total_count': 0
+                }
+            
+            product_results[product_id]['images'].append(result)
+            product_results[product_id]['total_count'] += 1
+            if result['success']:
+                product_results[product_id]['success_count'] += 1
+        
+        # Calculate overall success rate
+        total_images = len(all_images)
+        successful_images = sum(1 for r in results if r['success'])
+        success_rate = (successful_images / total_images) * 100 if total_images > 0 else 0
+        
+        logger.info(f"Batch background removal completed: {successful_images}/{total_images} images successful ({success_rate:.1f}%)")
+        
+        return {
+            'success': True,
+            'total_images': total_images,
+            'successful_images': successful_images,
+            'success_rate': success_rate,
+            'product_results': list(product_results.values()),
+            'processing_time': 0  # Could add timing if needed
+        }
+    
     def get_provider_info(self) -> List[Dict[str, Any]]:
         """Get information about all providers"""
         return [provider.get_provider_info() for provider in self.providers]
