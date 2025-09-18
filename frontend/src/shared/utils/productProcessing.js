@@ -324,6 +324,42 @@ export const processBatch = async (products, options = {}) => {
       total: products.length
     });
     
+    // First, set all products to loading state for background removal
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      const updatedProduct = {
+        ...product,
+        id: savedProductsMap[product.name] || product.id
+      };
+      
+      const loadingResult = {
+        id: updatedProduct.id,
+        name: updatedProduct.name,
+        overallStatus: 'processing',
+        stages: {
+          databaseSave: {
+            status: 'complete',
+            data: {
+              productId: updatedProduct.id,
+              savedAt: new Date().toISOString(),
+              status: 'saved',
+              databaseId: updatedProduct.id
+            }
+          },
+          backgroundRemoval: {
+            status: 'processing',
+            progress: 0,
+            data: {
+              message: 'Processing background removal...'
+            }
+          }
+        },
+        startTime: Date.now()
+      };
+      
+      onProductComplete(loadingResult);
+    }
+    
     try {
       const bgRemovalResponse = await fetch('/api/batch/background-removal', {
         method: 'POST',
