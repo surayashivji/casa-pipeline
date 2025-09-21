@@ -138,6 +138,28 @@ const Model3DCell = ({ stageData, result, isCurrentStage = false }) => {
     }
   };
 
+  const getProgressBar = () => {
+    if (stageData?.status !== 'processing') return null;
+    
+    const progress = stageData.progress || 0;
+    const message = stageData.data?.message || 'Processing...';
+    
+    return (
+      <div className="w-full mt-1">
+        <div className="flex justify-between text-xs text-gray-600 mb-1">
+          <span>{message}</span>
+          <span>{progress}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-1.5">
+          <div 
+            className="bg-blue-600 h-1.5 rounded-full transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col items-center space-y-1">
       {getStatusIcon()}
@@ -147,6 +169,7 @@ const Model3DCell = ({ stageData, result, isCurrentStage = false }) => {
           <span className="text-green-600 text-xs">✅</span>
         )}
       </div>
+      {getProgressBar()}
     </div>
   );
 };

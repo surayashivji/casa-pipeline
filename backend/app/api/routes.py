@@ -2281,6 +2281,146 @@ async def batch_background_removal(request: dict, db: Session = Depends(get_db))
         logger.error(f"Batch background removal failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to process background removal: {str(e)}")
 
+@router.post("/batch/generate-3d-models")
+async def batch_generate_3d_models(request: dict, db: Session = Depends(get_db)):
+    """
+    Generate 3D models for multiple products sequentially using Meshy API
+    This is the "3D Model Generation" stage in batch processing
+    """
+    try:
+        products_data = request.get('products', [])
+        if not products_data:
+            raise HTTPException(status_code=400, detail="No products provided")
+        
+        # Cap at 10 products per batch (Meshy is expensive)
+        if len(products_data) > 10:
+            raise HTTPException(status_code=400, detail="Maximum 10 products per batch for 3D generation")
+        
+        logger.info(f"Starting batch 3D model generation for {len(products_data)} products")
+        
+        # Import here to avoid circular imports
+        from app.services.meshy.meshy import MeshyService
+        from app.services.mock_data import mock_data
+        
+        meshy = MeshyService()
+        results = []
+        
+        # Process each product sequentially (as requested)
+        for i, product_data in enumerate(products_data):
+            try:
+                product_id = product_data.get('id')
+                product_name = product_data.get('name', 'Unknown Product')
+                
+                logger.info(f"Processing 3D model for product {i+1}/{len(products_data)}: {product_name}")
+                
+                # Get original images for this product (same as single product processing)
+                original_images = db.query(ProductImage).filter(
+                    ProductImage.product_id == product_id,
+                    ProductImage.image_type == 'original'
+                ).order_by(ProductImage.image_order).all()
+                
+                if not original_images:
+                    logger.warning(f"No original images found for product {product_id}")
+                    results.append({
+                        'product_id': product_id,
+                        'product_name': product_name,
+                        'success': False,
+                        'error': 'No original images found',
+                        'task_id': None
+                    })
+                    continue
+                
+                # Check test mode from environment first
+                test_mode = os.getenv("MESHY_TEST_MODE", "true").lower() == "true"
+                
+                if test_mode:
+                    logger.info(f"🧪 TEST MODE: Using test images for {product_name}")
+                    image_urls = [
+                        "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800",
+                        "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800"
+                    ]
+                else:
+                    # Use first 3 original images (same as single product processing)
+                    image_urls = [img.s3_url for img in original_images[:3]]
+                    logger.info(f"Using first {len(image_urls)} original images for {product_name}: {image_urls}")
+                
+                # Create Meshy task (reuse existing logic)
+                meshy_result = meshy.create_task(image_urls)
+                
+                if not meshy_result["success"]:
+                    logger.error(f"Meshy API failed for {product_name}: {meshy_result.get('error')}")
+                    results.append({
+                        'product_id': product_id,
+                        'product_name': product_name,
+                        'success': False,
+                        'error': meshy_result.get('error', 'Meshy API failed'),
+                        'task_id': None
+                    })
+                    continue
+                
+                task_id = meshy_result["task_id"]
+                logger.info(f"Created Meshy task for {product_name}: {task_id}")
+                
+                # Store in database (reuse existing logic)
+                model_3d = Model3D(
+                    product_id=product_id,
+                    meshy_task_id=task_id,
+                    status="processing",
+                    s3_url="",  # Will be updated when complete
+                    generation_method="meshy",
+                    is_test_mode=test_mode
+                )
+                db.add(model_3d)
+                
+                # Create processing stage record
+                stage = mock_data.create_processing_stage(
+                    product_id=product_id,
+                    stage_name="3d_generation",
+                    input_data={"images": image_urls, "image_count": len(image_urls)},
+                    output_data={"meshy_task_id": task_id},
+                    db=db
+                )
+                
+                db.commit()
+                
+                results.append({
+                    'product_id': product_id,
+                    'product_name': product_name,
+                    'success': True,
+                    'task_id': task_id,
+                    'status': 'processing',
+                    'estimated_completion': datetime.now() + timedelta(seconds=180),  # 3 minutes
+                    'cost': 0.00 if test_mode else 0.50
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to process 3D model for {product_data.get('name', 'Unknown')}: {str(e)}")
+                results.append({
+                    'product_id': product_data.get('id'),
+                    'product_name': product_data.get('name', 'Unknown'),
+                    'success': False,
+                    'error': str(e),
+                    'task_id': None
+                })
+        
+        successful_count = sum(1 for r in results if r['success'])
+        
+        logger.info(f"Batch 3D model generation completed: {successful_count}/{len(products_data)} successful")
+        
+        return {
+            "success": True,
+            "message": f"Started 3D model generation for {successful_count} products",
+            "total_products": len(products_data),
+            "successful_products": successful_count,
+            "results": results
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch 3D model generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate 3D models: {str(e)}")
+
 @router.post("/batch/save-products")
 async def save_batch_products(request: dict, db: Session = Depends(get_db)):
     """

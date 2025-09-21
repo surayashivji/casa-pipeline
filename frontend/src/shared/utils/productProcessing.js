@@ -193,22 +193,117 @@ const processRemainingStages = async (product, onProgress, onProductComplete) =>
     // Background removal is already handled in batch processing, skip it here
     console.log('Skipping background removal for:', product.name, '(already processed in batch)');
 
-    // Stage 1: 3D Model Generation
+    // Stage 1: 3D Model Generation (Real Meshy API)
     console.log('Generating 3D model for:', product.name);
-    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
     
+    // Set loading state
     result.stages.modelGeneration = {
-      status: 'complete',
+      status: 'processing',
+      progress: 0,
       data: {
-        modelUrl: `https://example.com/model-${product.id}.glb`,
-        modelFormat: 'glb',
-        vertices: 12543,
-        faces: 8421,
-        textures: 3
+        message: 'Starting 3D generation...'
       }
     };
-    
     onProductComplete(result); // Update UI immediately
+    
+    try {
+      // Call batch 3D generation API
+      const modelResponse = await fetch('/api/batch/generate-3d-models', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          products: [product]
+        })
+      });
+      
+      if (!modelResponse.ok) {
+        throw new Error(`Failed to generate 3D model: ${modelResponse.statusText}`);
+      }
+      
+      const modelResult = await modelResponse.json();
+      const productResult = modelResult.results.find(r => r.product_id === product.id);
+      
+      if (!productResult || !productResult.success) {
+        throw new Error(productResult?.error || '3D model generation failed');
+      }
+      
+      const taskId = productResult.task_id;
+      console.log(`Started Meshy task for ${product.name}: ${taskId}`);
+      
+      // Poll for completion (reuse single product logic)
+      let pollAttempts = 0;
+      const maxPollAttempts = 60; // 5 minutes max
+      
+      const pollInterval = setInterval(async () => {
+        try {
+          pollAttempts++;
+          
+          // Update progress with estimated progress
+          const estimatedProgress = Math.min(20 + (pollAttempts * 1.3), 90);
+          result.stages.modelGeneration = {
+            status: 'processing',
+            progress: Math.round(estimatedProgress),
+            data: {
+              message: pollAttempts < 10 ? 'Analyzing product structure...' :
+                      pollAttempts < 20 ? 'Generating 3D geometry...' :
+                      pollAttempts < 30 ? 'Applying textures...' : 'Finalizing model...',
+              taskId: taskId
+            }
+          };
+          onProductComplete(result);
+          
+          // Check status
+          const statusResponse = await fetch(`/api/model-status/${taskId}`);
+          if (!statusResponse.ok) {
+            throw new Error('Failed to check model status');
+          }
+          
+          const statusData = await statusResponse.json();
+          
+          if (statusData.status === 'completed') {
+            clearInterval(pollInterval);
+            result.stages.modelGeneration = {
+              status: 'complete',
+              data: {
+                modelUrl: statusData.model_url,
+                thumbnailUrl: statusData.thumbnail_url,
+                modelFormat: 'glb',
+                vertices: statusData.vertices || 12543,
+                faces: statusData.triangles || 8421,
+                textures: 3,
+                taskId: taskId
+              }
+            };
+            onProductComplete(result);
+            
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval);
+            throw new Error(statusData.error || 'Model generation failed');
+            
+          } else if (pollAttempts >= maxPollAttempts) {
+            clearInterval(pollInterval);
+            throw new Error('Model generation timed out');
+          }
+          
+        } catch (pollError) {
+          console.error(`Polling error for ${product.name}:`, pollError);
+          clearInterval(pollInterval);
+          throw pollError;
+        }
+      }, 5000); // Poll every 5 seconds
+      
+    } catch (error) {
+      console.error(`3D model generation failed for ${product.name}:`, error);
+      result.stages.modelGeneration = {
+        status: 'failed',
+        data: {
+          error: error.message
+        }
+      };
+      onProductComplete(result);
+    }
 
     // Stage 2: Optimization
     console.log('Optimizing model for:', product.name);
