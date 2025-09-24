@@ -234,33 +234,33 @@ const processRemainingStages = async (product, onProgress, onProductComplete) =>
       
       // Poll for completion (reuse single product logic)
       let pollAttempts = 0;
-      const maxPollAttempts = 60; // 5 minutes max
+      const maxPollAttempts = 120; // 10 minutes max (Meshy can take 4-5+ minutes)
       
       const pollInterval = setInterval(async () => {
         try {
           pollAttempts++;
           
-          // Update progress with estimated progress
-          const estimatedProgress = Math.min(20 + (pollAttempts * 1.3), 90);
-          result.stages.modelGeneration = {
-            status: 'processing',
-            progress: Math.round(estimatedProgress),
-            data: {
-              message: pollAttempts < 10 ? 'Analyzing product structure...' :
-                      pollAttempts < 20 ? 'Generating 3D geometry...' :
-                      pollAttempts < 30 ? 'Applying textures...' : 'Finalizing model...',
-              taskId: taskId
-            }
-          };
-          onProductComplete(result);
-          
-          // Check status
+          // Check status first to get real progress
           const statusResponse = await fetch(`/api/model-status/${taskId}`);
           if (!statusResponse.ok) {
             throw new Error('Failed to check model status');
           }
           
           const statusData = await statusResponse.json();
+          
+          // Use real progress from Meshy API
+          const realProgress = statusData.progress || 0;
+          result.stages.modelGeneration = {
+            status: 'processing',
+            progress: realProgress,
+            data: {
+              message: realProgress < 30 ? 'Analyzing product structure...' :
+                      realProgress < 60 ? 'Generating 3D geometry...' :
+                      realProgress < 90 ? 'Applying textures...' : 'Finalizing model...',
+              taskId: taskId
+            }
+          };
+          onProductComplete(result);
           
           if (statusData.status === 'completed') {
             clearInterval(pollInterval);

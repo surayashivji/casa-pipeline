@@ -95,7 +95,7 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
         
         // Step 2: Poll for status
         let pollAttempts = 0;
-        const maxPollAttempts = 60;
+        const maxPollAttempts = 120; // 10 minutes max (Meshy can take 4-5+ minutes)
         
         pollIntervalRef.current = setInterval(async () => {
           if (isCancelled || !isMountedRef.current) {
@@ -108,22 +108,24 @@ const ModelGeneration = ({ data, onNext, onBack }) => {
           try {
             pollAttempts++;
             
-            const estimatedProgress = Math.min(20 + (pollAttempts * 1.3), 90);
-            setProgress(Math.round(estimatedProgress));
+            // Check status first to get real progress
+            const statusResponse = await checkModelStatus(taskId);
+            console.log('Status response:', statusResponse);
             
-            if (pollAttempts < 10) {
+            // Use real progress from Meshy API
+            const realProgress = statusResponse.progress || 0;
+            setProgress(realProgress);
+            
+            // Update step message based on real progress
+            if (realProgress < 30) {
               setCurrentStep('Analyzing product structure...');
-            } else if (pollAttempts < 20) {
+            } else if (realProgress < 60) {
               setCurrentStep('Generating 3D geometry...');
-            } else if (pollAttempts < 30) {
+            } else if (realProgress < 90) {
               setCurrentStep('Applying textures...');
             } else {
               setCurrentStep('Finalizing model...');
             }
-            
-            // Check status
-            const statusResponse = await checkModelStatus(taskId);
-            console.log('Status response:', statusResponse);
             
             if (isCancelled || !isMountedRef.current) return;
             
